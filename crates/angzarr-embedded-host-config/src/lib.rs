@@ -87,7 +87,7 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 use angzarr_yaml::versioned::{Fixture, LoadError, Loader, Migrations};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 pub use angzarr_yaml;
 
@@ -121,6 +121,11 @@ pub const FIXTURES: &[Fixture<'static>] = &[
         expected: None,
     },
     Fixture {
+        name: "fixtures/v0-unstamped.yaml",
+        input: include_str!("../fixtures/v0-unstamped.yaml"),
+        expected: Some(include_str!("../fixtures/v0-unstamped.expected.yaml")),
+    },
+    Fixture {
         name: "fixtures/v1-minimal.yaml",
         input: include_str!("../fixtures/v1-minimal.yaml"),
         expected: None,
@@ -128,7 +133,7 @@ pub const FIXTURES: &[Fixture<'static>] = &[
 ];
 
 /// The host's whole config. Every mapping refuses a key it does not know.
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct HostConfig {
     /// Every component of the application, in-process and remote: the
@@ -180,7 +185,7 @@ pub fn stamped(body: &str) -> String {
 /// (angzarr-embedded's `OnRetryable`). Retrying is on with no config;
 /// `max_retries: 0` turns it off. Every key has a default, so the mapping
 /// may be left out.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Deserialize)]
 #[serde(deny_unknown_fields, default)]
 pub struct RetryConfig {
     /// Retries after the first attempt, then the step is dead-lettered; 0
@@ -219,7 +224,7 @@ impl Default for RetryConfig {
 
 /// The `policy` mapping: how the kernel treats a policy whose step hits a
 /// bug. Every key has a default, so the mapping may be left out.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields, default)]
 pub struct PolicyConfig {
     /// What a policy step that hits a bug (the policy's own error, or a
@@ -231,7 +236,7 @@ pub struct PolicyConfig {
 }
 
 /// The `policy` mapping's `on_bug`: `move_past` or `stay`.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum OnBug {
     /// Past the trigger: the dead letter is the record to replay.
@@ -242,7 +247,7 @@ pub enum OnBug {
 }
 
 /// The `store` mapping: the application's SQLite store.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields, default)]
 pub struct StoreConfig {
     /// The SQLite file, created when absent; relative to the working
@@ -263,7 +268,7 @@ impl Default for StoreConfig {
 }
 
 /// One `component` entry.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ComponentConfig {
     /// The component's name. An in-process domain's is its component name
@@ -282,37 +287,37 @@ pub struct ComponentConfig {
     pub kind: ComponentKindConfig,
     /// An upcaster's: the domain whose payloads it upcasts (decision
     /// 14.39); unset for every other kind.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub upcasts: Option<String>,
     /// The command that starts its child, program first. Overrides the
     /// language's default (and its `entry`) entirely.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub launch: Option<Vec<String>>,
     /// The arguments after the language's default launch command: the
     /// module or entry point (`[-m, player.serve]`, `[player-serve]`).
     /// Unused when `launch` is given.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[serde(default)]
     pub entry: Vec<String>,
     /// The child's working directory; the application's when absent.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub dir: Option<PathBuf>,
     /// Environment variables set for the child, beside the host's own and
     /// `ANGZARR_SOCKET`.
-    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    #[serde(default)]
     pub env: BTreeMap<String, String>,
     /// Who may send it commands from outside the application, through the
     /// host's one listener (`CommandHandlerCoordinatorService`, routed by
     /// `cover.domain`, this component's `name`): nobody (`none`, the
     /// default), this machine only (`loopback`) or the network (`ip`).
     /// Only an aggregate may be exposed.
-    #[serde(default, skip_serializing_if = "Expose::is_none")]
+    #[serde(default)]
     pub expose: Expose,
 }
 
 /// A `component` entry's `expose`: from how far a command may reach the
 /// component through the host's listener. Ordered: an exposure admits
 /// every request a narrower one does.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Expose {
     /// Not reachable from outside the application.
@@ -325,10 +330,6 @@ pub enum Expose {
 }
 
 impl Expose {
-    fn is_none(&self) -> bool {
-        *self == Expose::None
-    }
-
     /// Its form in the file: `none`, `loopback` or `ip`.
     pub fn as_str(&self) -> &'static str {
         match self {
@@ -342,7 +343,7 @@ impl Expose {
 /// A `component` entry's `kind`, required: what the component is, and for
 /// a child, which of angzarr's component services it serves. A child's
 /// descriptor's kind must agree.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ComponentKindConfig {
     /// An aggregate or a process manager (`CommandHandlerService`); which,
@@ -373,7 +374,7 @@ impl ComponentKindConfig {
 
 /// How the host supervises its children. Every key has a default, so the
 /// `supervision` mapping, and any key in it, may be left out.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields, default)]
 pub struct Supervision {
     /// How long a child has, from its start, to print its handshake.
@@ -398,7 +399,6 @@ pub struct Supervision {
     /// `/tmp`: never `$TMPDIR`, which may be deep. A Unix socket's path is
     /// at most 107 bytes, so the host refuses a directory too long to hold
     /// its socket names.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub socket_dir: Option<PathBuf>,
 }
 

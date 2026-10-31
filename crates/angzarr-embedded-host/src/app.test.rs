@@ -245,7 +245,7 @@ async fn a_missing_config_is_unreadable() {
 
 /// A config that does not load is invalid, its cause the reader's error:
 /// an unknown key at its key path, YAML the reader does not take (the old
-/// TOML among it), a file of a newer version, and one with no stamp.
+/// TOML among it) and a file of a newer version.
 #[tokio::test(flavor = "multi_thread")]
 async fn an_invalid_config_is_refused_where_it_goes_wrong() {
     let dir = scratch("invalid");
@@ -261,11 +261,7 @@ async fn an_invalid_config_is_refused_where_it_goes_wrong() {
         ),
         "{refused:?}"
     );
-    for text in [
-        "[[domain]\n",
-        "schema_version: 2\n",
-        "store:\n  in_memory: true\n",
-    ] {
+    for text in ["[[domain]\n", "schema_version: 2\n"] {
         std::fs::write(&path, text).unwrap();
         assert!(
             matches!(

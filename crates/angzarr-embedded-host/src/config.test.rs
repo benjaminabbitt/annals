@@ -287,16 +287,16 @@ mod strict {
     }
 
     /// A newer file is refused with the reader's code; a file with no
-    /// stamp, version 0, at the floor.
+    /// stamp reads as the current version.
     #[test]
-    fn a_newer_or_unstamped_file_is_refused() {
+    fn a_newer_file_is_refused_and_an_unstamped_one_reads() {
         assert_eq!(
             problem(&refused("schema_version: 2\n")).0,
             "angzarr-yaml-too-new"
         );
         assert_eq!(
-            problem(&refused("store:\n  in_memory: true\n")).0,
-            "angzarr-yaml-too-old"
+            parse("store:\n  in_memory: true\n", "angzarr.yaml").map(|c| c.store.in_memory),
+            Ok(true)
         );
     }
 

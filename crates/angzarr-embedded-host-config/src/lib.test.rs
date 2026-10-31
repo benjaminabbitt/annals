@@ -69,12 +69,13 @@ fn the_file_is_angzarr_yaml_stamped_schema_version_at_version_1() {
     let loader = loader();
     assert_eq!(loader.kind(), "angzarr-host-config");
     assert_eq!(loader.key(), "schema_version");
-    assert_eq!((loader.oldest(), loader.current()), (1, 1));
+    assert_eq!(loader.current(), 1);
     assert_eq!(CURRENT, 1);
     assert_eq!(loader.legacy_key(), None);
 }
 
-/// Every fixture loads to itself: each is at the current version.
+/// Every fixture loads to what it must: the current ones to themselves,
+/// the unstamped one to itself stamped.
 #[test]
 fn the_fixtures_load() {
     loader().assert_fixtures(FIXTURES);
@@ -126,7 +127,7 @@ fn a_current_file_loads() {
 #[test]
 fn a_file_of_only_its_stamp_is_every_default() {
     assert_eq!(
-        HostConfig::from_yaml(FIXTURES[1].input, FIXTURES[1].name),
+        HostConfig::from_yaml(FIXTURES[2].input, FIXTURES[2].name),
         Ok(HostConfig::default())
     );
     assert_eq!(stamped(""), "schema_version: 1\n");
@@ -185,25 +186,25 @@ fn a_newer_file_is_refused_with_the_readers_code() {
     assert_eq!(problem.code(), "angzarr-yaml-too-new");
 }
 
-/// A file with no stamp is version 0, and version 1 is the first, so it is
-/// refused at the floor: older than the oldest this build reads. So is
-/// one stamped 0, and an empty file.
+/// A file with no stamp is the oldest generation (the config-versioning
+/// rule), and the host config has none older than version 1, its first
+/// versioned shape, which is the shape the unstamped files already had:
+/// so it loads as the current version, as the same file stamped does. An
+/// empty or comment-only file is this case: every default.
 #[test]
-fn a_file_with_no_stamp_is_version_0_and_refused_at_the_floor() {
-    let unstamped = "component:\n  - name: table\n    kind: domain\n    language: rust\n";
-    let doc = angzarr_yaml::parse(unstamped).unwrap();
+fn a_file_with_no_stamp_loads_as_the_current_version() {
+    let body = "component:\n  - name: table\n    kind: domain\n    language: rust\n";
+    let doc = angzarr_yaml::parse(body).unwrap();
     assert_eq!(loader().version_of(&doc), Ok(0));
-    for text in [unstamped, "schema_version: 0\n", "", "# nothing yet\n"] {
-        let problem = refused(text);
+    let stamped_config = read(body).unwrap();
+    assert_eq!(stamped_config.components, [domain("table", "rust")]);
+    assert_eq!(HostConfig::from_yaml(body, FILE_NAME), Ok(stamped_config));
+    for text in ["", "# nothing yet\n"] {
         assert_eq!(
-            problem,
-            LoadProblem::TooOld {
-                found: 0,
-                oldest: 1
-            },
+            HostConfig::from_yaml(text, FILE_NAME),
+            Ok(HostConfig::default()),
             "{text:?}"
         );
-        assert_eq!(problem.code(), "angzarr-yaml-too-old");
     }
 }
 
