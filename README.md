@@ -16,9 +16,9 @@ three angzarr core's shared crates; angzarr-store-sqlite depends on
 angzarr-ports, sea-query and sqlx. Every error is localizable: a stable code
 and named args (angzarr core's `angzarr-diagnostic`, re-exported as
 `angzarr_embedded::angzarr_diagnostic`), with an en-US Fluent catalog per
-crate under `crates/<crate>/locales/`. angzarr core also holds the strict
-YAML reader with versioned documents (`angzarr-yaml`), which this
-repository's crates do not use.
+crate under `crates/<crate>/locales/`. The host config, `angzarr.yaml`, is read
+through angzarr core's strict YAML reader with versioned documents
+(`angzarr-yaml`), in angzarr-embedded-host-config.
 
 An application pins none of the crates beneath angzarr-embedded: only this
 repository's crates it uses (angzarr-embedded, and angzarr-embedded-macros or
@@ -32,7 +32,8 @@ was `angzarr_embedded::next`, which stays for now as a deprecated alias.
 | Crate | What it is |
 |---|---|
 | [`angzarr-embedded`](crates/angzarr-embedded) | event-sourcing kernel on angzarr's proto types (`angzarr_embedded`): decide, emit, apply, replay; angzarr's local runtime |
-| [`angzarr-embedded-host`](crates/angzarr-embedded-host) | remote components as child processes (the go-plugin model): launched from `[[component]]` config tables, which list every component, in-process ones too (`kind`, required, = `domain`, `policy`, `projector` or `upcaster`; read strictly: unknown keys and values refused, at their key path), handshaken, reached by gRPC on a Unix socket, supervised, and handed back to the kernel by kind (a domain as an angzarr-router `CommandHandler`, a policy as a `PolicyComponent`, a projector as a `ProjectorHandler`) |
+| [`angzarr-embedded-host`](crates/angzarr-embedded-host) | remote components as child processes (the go-plugin model): launched from the `component` entries of its config (`angzarr.yaml`, angzarr-embedded-host-config's schema), which list every component, in-process ones too (`kind`, required, = `domain`, `policy`, `projector` or `upcaster`; read strictly: unknown keys and values refused, at their key path), handshaken, reached by gRPC on a Unix socket, supervised, and handed back to the kernel by kind (a domain as an angzarr-router `CommandHandler`, a policy as a `PolicyComponent`, a projector as a `ProjectorHandler`) |
+| [`angzarr-embedded-host-config`](crates/angzarr-embedded-host-config) | the host config's schema, `angzarr.yaml` stamped `schema_version` (version 1): its types, its versioned loader and its fixtures, with no runtime (serde and angzarr-yaml only), shared by angzarr-embedded-host and angzarr-cli's `lint app` and `scaffold app` |
 | [`angzarr-store-sqlite`](crates/angzarr-store-sqlite) | angzarr-ports on SQLite, the one SQLite adapter angzarr-embedded and angzarr share: a leaf (nothing of angzarr-embedded), sea-query statements on sqlx, with its migrations; held to the ports' conformance suite |
 | [`angzarr-embedded-macros`](crates/angzarr-embedded-macros) | markup over hand-written aggregates, process managers, policies and projectors, generating their `angzarr_embedded` glue |
 | [`angzarr-embedded-catalog-check`](crates/angzarr-embedded-catalog-check) | test-only: every error code has a message, with exactly its args, in every shipped Fluent catalog |
@@ -69,10 +70,11 @@ only tests build, aside):
 - **Carry angzarr-proto:** `angzarr-embedded` and `angzarr-embedded-host`,
   which depend on it directly, and `angzarr-store-sqlite`, which depends on
   angzarr-ports.
-- **Do not carry angzarr-proto:** `angzarr-embedded-catalog-check` and `angzarr-embedded-macros`.
+- **Do not carry angzarr-proto:** `angzarr-embedded-catalog-check`, `angzarr-embedded-host-config` and `angzarr-embedded-macros`.
   `angzarr-embedded-catalog-check` and `angzarr-embedded-macros` reach angzarr-proto only
   through dev-dependencies, so their tests link it but
-  a binary built on them does not.
+  a binary built on them does not; `angzarr-embedded-host-config` does
+  not reach it at all.
 
 `just licence-check`, part of `just lint`, fails when these two lists stop
 matching `cargo tree`.

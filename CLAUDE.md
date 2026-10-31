@@ -84,6 +84,16 @@ angzarr-ports, angzarr-diagnostic and angzarr-router at its root too, so an
 application pins none of them: only this repository's crates it uses
 (angzarr-embedded, and angzarr-embedded-macros or -host) and angzarr-cli.
 
+angzarr-embedded-host-config depends on `angzarr-yaml` (angzarr core's
+strict YAML reader, pinned at the rev the other core crates are: the
+versioned loader and the strict serde decode, every failure a key path and
+a code) and `serde` (its derives), and on nothing else, because it is the
+host config's schema, `angzarr.yaml`, shared by angzarr-embedded-host, which
+runs it, and by angzarr-cli's `lint app` and `scaffold app`, which must not
+take tokio, tonic or SQLite to read it. It defines no errors: a config that
+does not load is angzarr-yaml's `LoadError`. The `language` closed set is
+the host's, since it is the languages the running application loads.
+
 angzarr-embedded-host depends on `angzarr-embedded` (the kernel's `Registry`,
 which `Host::register` fills), `angzarr-router` and `angzarr-proto`
 (pinned at the revs the router names, so its graph holds one angzarr-proto),

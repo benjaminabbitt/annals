@@ -55,7 +55,11 @@ fn sqlite_samples() -> Vec<Box<dyn Diagnostic>> {
 }
 
 /// Crates that define no codes of their own.
-const NO_CODES: &[&str] = &["angzarr-embedded-catalog-check", "angzarr-embedded-macros"];
+const NO_CODES: &[&str] = &[
+    "angzarr-embedded-catalog-check",
+    "angzarr-embedded-host-config",
+    "angzarr-embedded-macros",
+];
 
 fn crates_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
