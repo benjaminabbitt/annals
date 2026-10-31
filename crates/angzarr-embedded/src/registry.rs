@@ -1018,7 +1018,7 @@ impl Registry {
     }
 
     /// `domain`'s name as a component of an application, what a host's
-    /// `[[component]]` lists it by (decision 14.50's default
+    /// `component` entry lists it by (decision 14.50's default
     /// `component_name`): an aggregate's is its domain, a process
     /// manager's `pmg-` and its domain. `None` for a domain not registered
     /// here.

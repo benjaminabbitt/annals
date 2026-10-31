@@ -101,9 +101,10 @@ which `Host::register` fills), `angzarr-router` and `angzarr-proto`
 child's server), `tokio`,
 `tower` and `hyper-util` (the runtime and the Unix-socket connector),
 `libc` (SIGTERM to a child at shutdown, which tokio cannot send),
-`angzarr-store-sqlite` (the store `run` opens), and `serde` and `toml`
-(its config, the angzarr.toml the CLI writes, whose `[[component]]` tables
-name each component's `kind`: domain, policy, projector or upcaster), because a remote
+`angzarr-store-sqlite` (the store `run` opens), and
+`angzarr-embedded-host-config` (its config's schema and loader: the
+angzarr.yaml the CLI writes, whose `component` entries name each
+component's `kind`: domain, policy, projector or upcaster), because a remote
 component (a domain, a policy or a projector) is a child process speaking
 gRPC on a Unix socket: hand-rolling HTTP/2 would be a second, unchecked
 implementation of gRPC. Its stubs are written by `tonic-build`'s manual

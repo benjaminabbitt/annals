@@ -4,7 +4,7 @@
 //! ```ignore
 //! #[tokio::main]
 //! async fn main() -> Result<(), angzarr_embedded_host::HostError> {
-//!     let app = std::sync::Arc::new(angzarr_embedded_host::run("angzarr.toml", register).await?);
+//!     let app = std::sync::Arc::new(angzarr_embedded_host::run("angzarr.yaml", register).await?);
 //!     // app.handle(book, &sampled).await from any task, concurrently;
 //!     // app.events(&cover).await, app.kernel(), ...
 //!     app.shutdown().await; // or drop it: the children stop
@@ -37,19 +37,19 @@ use angzarr_embedded::{
 use angzarr_router::pb::{CommandResponse, ComponentKind};
 use angzarr_store_sqlite::SqliteStore;
 
-use crate::config::{Expose, HostConfig, Languages};
+use crate::config::{on_policy_bug, on_retryable, Expose, HostConfig, Languages};
 use crate::error::HostError;
 use crate::exposure::{Arrival, NotExposed};
 use crate::host::{ChildExit, Host};
 
 /// Runs the application the config at `config` describes: reads it
-/// (TOML, strictly: [`HostConfig::from_toml`]), starts its remote
+/// (`angzarr.yaml`, strictly: [`crate::config::parse`]), starts its remote
 /// components ([`Host::start`]), registers them by kind and calls
 /// `register` to register the in-process ones, holding what it registers
-/// to the in-process `[[component]]`s, by name and kind (one listed and
+/// to the in-process `component` entries, by name and kind (one listed and
 /// not registered, [`HostError::NotRegistered`]; one registered and not
 /// listed, [`HostError::NotListed`]), opens
-/// its store (SQLite, `[store]`) on the caller's runtime, and resumes the
+/// its store (SQLite, `store`) on the caller's runtime, and resumes the
 /// policy work its store still owes ([`Kernel::resume`]: what a crash left
 /// between a commit and its policies' steps) before it returns. The [`App`] is
 /// how the application sends commands and reads its streams; dropping it
@@ -58,7 +58,7 @@ use crate::host::{ChildExit, Host};
 /// aggregate is served through the host's listener. On any refusal the
 /// children started are stopped again. Its components' languages are the
 /// built-in ones ([`Languages::builtin`]); [`run_with_languages`] loads
-/// more.
+/// more, and [`run_with`] runs a config already in hand.
 pub async fn run(
     config: impl AsRef<Path>,
     register: impl FnOnce(&mut Registry),
@@ -78,8 +78,19 @@ pub async fn run_with_languages(
     register: impl FnOnce(&mut Registry),
 ) -> Result<App, HostError> {
     let path = config.as_ref().to_path_buf();
+    let config = blocking(move || read(&path)).await?;
+    run_with(config, languages, register).await
+}
+
+/// [`run_with_languages`] on `config`, a config already in hand rather
+/// than a file: built in code, or read by the caller
+/// ([`crate::config::parse`]).
+pub async fn run_with(
+    config: HostConfig,
+    languages: Languages,
+    register: impl FnOnce(&mut Registry),
+) -> Result<App, HostError> {
     let (config, host, languages) = blocking(move || {
-        let config = read(&path)?;
         let host = Host::start_with_languages(config.clone(), &languages)?;
         Ok((config, host, languages))
     })
@@ -129,8 +140,8 @@ pub async fn run_with_languages(
         host,
         registry,
         dead_letters: MemoryDeadLetters::new(),
-        policy_bug: config.policy.on_bug,
-        retry: config.retry.on_retryable(),
+        policy_bug: on_policy_bug(config.policy.on_bug),
+        retry: on_retryable(&config.retry),
         store,
         exposed,
     };
@@ -160,13 +171,13 @@ fn started_at() -> Sampled {
 }
 
 /// The `kind` a process manager is refused exposure under: not a
-/// `[[component]]` kind (a domain is an aggregate or a process manager),
+/// `component` entry kind (a domain is an aggregate or a process manager),
 /// its descriptor's kind.
 const PROCESS_MANAGER: &str = "process_manager";
 
 /// Whether the component `name` is registered here as a process manager:
 /// a domain whose component name it is (decision 14.50), or a remote
-/// domain the host registered under its `[[component]]` name.
+/// domain the host registered under its `component` entry name.
 fn process_manager(registry: &Registry, name: &str) -> bool {
     let is = |domain: &str| {
         matches!(
@@ -180,13 +191,13 @@ fn process_manager(registry: &Registry, name: &str) -> bool {
             .any(|domain| registry.component_name(domain).as_deref() == Some(name) && is(domain))
 }
 
-/// The config at `path`, read as TOML.
+/// The config at `path`, read strictly.
 fn read(path: &Path) -> Result<HostConfig, HostError> {
     let text = std::fs::read_to_string(path).map_err(|e| HostError::ConfigUnreadable {
         path: path.display().to_string(),
         kind: format!("{:?}", e.kind()),
     })?;
-    HostConfig::from_toml(&text, &path.display().to_string())
+    crate::config::parse(&text, &path.display().to_string())
 }
 
 /// What a registry holds by name: its domains (by component name,
@@ -234,7 +245,7 @@ impl Registered {
 /// manager's `pmg-` and its domain: decision 14.50): a listed
 /// one registered of no such kind and name is [`HostError::NotRegistered`]
 /// (an upcaster's `upcasts` no domain registered at all), in the config's
-/// order; then one registered that no in-process `[[component]]` of its
+/// order; then one registered that no in-process `component` entry of its
 /// kind lists is [`HostError::NotListed`], domains first, then policies,
 /// then projectors.
 fn listed(
@@ -250,7 +261,7 @@ fn listed(
         .filter(|c| {
             languages
                 .get(&c.language)
-                .is_some_and(|language| matches!(c.placement(language), Ok(Placement::InProcess)))
+                .is_some_and(|language| matches!(language.placement(c), Ok(Placement::InProcess)))
         })
         .collect();
     for component in &in_process {
@@ -334,20 +345,20 @@ pub struct App {
     host: Host,
     registry: Registry,
     dead_letters: MemoryDeadLetters,
-    /// The config's `[policy] on_bug`.
+    /// The config's `policy.on_bug`.
     policy_bug: OnPolicyBug,
-    /// The config's `[retry]`.
+    /// The config's `retry`.
     retry: OnRetryable,
     store: SqliteStore,
-    /// Each `[[component]]` exposed to the host's listener, by name: one
+    /// Each `component` entry exposed to the host's listener, by name: one
     /// not here is exposed `"none"`.
     exposed: BTreeMap<String, Expose>,
 }
 
 impl App {
     /// The kernel over this application's registry and dead letters,
-    /// doing with a policy's bug what the config's `[policy] on_bug` says,
-    /// and retrying a step's retryable failure as its `[retry]` does.
+    /// doing with a policy's bug what the config's `policy.on_bug` says,
+    /// and retrying a step's retryable failure as its `retry` does.
     pub fn kernel(&self) -> Kernel<'_> {
         Kernel::new(&self.registry, &self.dead_letters)
             .on_policy_bug(self.policy_bug)
@@ -356,7 +367,7 @@ impl App {
 
     /// Runs the policy work the store still owes, by position
     /// ([`Kernel::resume`]), at [`started_at`]. A step that fails is as it
-    /// is in any chain: dead-lettered, its position where `[policy] on_bug`
+    /// is in any chain: dead-lettered, its position where `policy.on_bug`
     /// leaves it, and a retryable one's held for the next resume. Its
     /// failure is logged here and does not stop the application from
     /// starting: the work stays the store's to owe.
@@ -408,7 +419,7 @@ impl App {
 
     /// The exposure seam ([`crate::exposure`]): one request to the host's
     /// listener, which arrived from `arrived`. Handled as [`App::handle`]
-    /// handles a book when its domain's `[[component]]` is exposed to the
+    /// handles a book when its domain's `component` entry is exposed to the
     /// arrival, and answered as `CommandHandlerCoordinatorService.Handle`
     /// answers: the addressed stream's events and the delivery outcome.
     /// A domain not exposed to the arrival is refused as an unknown domain

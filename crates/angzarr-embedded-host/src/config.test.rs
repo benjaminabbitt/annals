@@ -1,6 +1,8 @@
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
+use angzarr_diagnostic::Report;
+
 use super::*;
 
 fn domain(name: &str, language: &str) -> ComponentConfig {
@@ -28,229 +30,7 @@ fn placed(component: &ComponentConfig) -> Result<Placement, HostError> {
     let language = languages
         .get(&component.language)
         .expect("a built-in language");
-    component.placement(language)
-}
-
-/// The CLI writes `[[component]]` tables (the `component` key holds the
-/// list);
-/// every key but `name`, `language` and `kind` may be left out, and
-/// `[supervision]` keeps the defaults of the keys it leaves out. Read here
-/// through serde_json, the serde format in the graph: the shape is serde's,
-/// whatever the format.
-#[test]
-fn the_component_tables_deserialize() {
-    let text = r#"{
-        "component": [
-            { "name": "table", "language": "rust", "kind": "domain" },
-            {
-                "name": "player",
-                "language": "python",
-                "kind": "domain",
-                "entry": ["-m", "player.serve"],
-                "dir": "domains/player",
-                "env": { "PLAYER_SEATS": "6" }
-            },
-            { "name": "dealer", "language": "go", "kind": "domain", "launch": ["./bin/dealer", "--serve"] }
-        ],
-        "supervision": { "handshake_timeout_ms": 10000 }
-    }"#;
-    let config: HostConfig = serde_json::from_str(text).unwrap();
-    let mut player = domain("player", "python");
-    player.entry = strings(&["-m", "player.serve"]);
-    player.dir = Some(PathBuf::from("domains/player"));
-    player.env = BTreeMap::from([("PLAYER_SEATS".to_string(), "6".to_string())]);
-    let mut dealer = domain("dealer", "go");
-    dealer.launch = Some(strings(&["./bin/dealer", "--serve"]));
-    assert_eq!(
-        config,
-        HostConfig {
-            components: vec![domain("table", "rust"), player, dealer],
-            supervision: Supervision {
-                handshake_timeout_ms: 10_000,
-                ..Supervision::default()
-            },
-            store: StoreConfig::default(),
-            policy: PolicyConfig::default(),
-            retry: RetryConfig::default(),
-        }
-    );
-}
-
-/// The module docs' TOML, as the CLI writes it, reads as their comments
-/// say.
-#[test]
-fn the_documented_toml_reads() {
-    let text = r#"
-        [[component]]
-        name = "table"
-        kind = "domain"
-        language = "rust"
-
-        [[component]]
-        name = "player"
-        kind = "domain"
-        language = "python"
-        entry = ["-m", "player.serve"]
-        dir = "domains/player"
-
-        [[component]]
-        name = "table-player"
-        kind = "policy"
-        language = "python"
-        entry = ["-m", "table_player.serve"]
-
-        [[component]]
-        name = "dealer"
-        kind = "domain"
-        language = "go"
-        launch = ["./bin/dealer"]
-
-        [supervision]
-        handshake_timeout_ms = 10000
-
-        [store]
-        path = "angzarr.db"
-
-        [policy]
-        on_bug = "move_past"
-
-        [retry]
-        max_retries = 3
-        max_race_runs = 10
-        initial_backoff_ms = 100
-        multiplier = 2.0
-        max_backoff_ms = 5000
-        jitter = 0.2
-    "#;
-    let config: HostConfig = toml::from_str(text).unwrap();
-    assert_eq!(config.components.len(), 4);
-    let kinds: Vec<_> = config.components.iter().map(|c| c.kind).collect();
-    assert_eq!(
-        kinds,
-        [
-            ComponentKindConfig::Domain,
-            ComponentKindConfig::Domain,
-            ComponentKindConfig::Policy,
-            ComponentKindConfig::Domain
-        ]
-    );
-    assert_eq!(placed(&config.components[1]), {
-        let mut player = domain("player", "python");
-        player.entry = strings(&["-m", "player.serve"]);
-        player.dir = Some(PathBuf::from("domains/player"));
-        placed(&player)
-    });
-    assert_eq!(config.supervision.handshake_timeout_ms, 10_000);
-    assert_eq!(config.supervision.call_timeout_ms, 30_000);
-    assert_eq!(config.store, StoreConfig::default());
-    assert_eq!(config.policy.on_bug, OnPolicyBug::MovePast);
-    assert_eq!(config.retry, RetryConfig::default());
-    let memory: HostConfig = toml::from_str("[store]\nin_memory = true\n").unwrap();
-    assert!(memory.store.in_memory);
-    assert!(memory.components.is_empty());
-}
-
-/// A misspelt key is refused, not ignored: `lanuch` would otherwise run the
-/// default launch silently.
-#[test]
-fn an_unknown_key_is_refused() {
-    let text = r#"{
-        "component": [
-            { "name": "player", "language": "python", "kind": "domain", "lanuch": ["python3", "serve.py"] }
-        ]
-    }"#;
-    assert!(serde_json::from_str::<HostConfig>(text).is_err());
-    assert!(serde_json::from_str::<HostConfig>(r#"{ "domains": [] }"#).is_err());
-    assert!(
-        serde_json::from_str::<HostConfig>(r#"{ "domain": [] }"#).is_err(),
-        "the old [[domain]] tables are refused, not read as none"
-    );
-}
-
-/// `[policy] on_bug` is what a policy step that hits a bug does with the
-/// policy's position: `"move_past"` the trigger (the default, when the key
-/// or the table is left out) or `"stay"` at it, so a resume runs it again.
-#[test]
-fn the_policy_table_sets_what_a_policy_bug_does_with_the_position() {
-    let on_bug = |text: &str| toml::from_str::<HostConfig>(text).map(|c| c.policy.on_bug);
-    assert_eq!(
-        on_bug("[policy]\non_bug = \"stay\"\n"),
-        Ok(OnPolicyBug::Stay)
-    );
-    assert_eq!(
-        on_bug("[policy]\non_bug = \"move_past\"\n"),
-        Ok(OnPolicyBug::MovePast)
-    );
-    assert_eq!(on_bug("[policy]\n"), Ok(OnPolicyBug::MovePast));
-    assert_eq!(on_bug(""), Ok(OnPolicyBug::MovePast));
-    assert_eq!(PolicyConfig::default().on_bug, OnPolicyBug::MovePast);
-}
-
-/// An `on_bug` that is neither `"move_past"` nor `"stay"` is refused, and
-/// so is an unknown key in `[policy]`.
-#[test]
-fn a_bad_policy_setting_is_refused() {
-    assert!(toml::from_str::<HostConfig>("[policy]\non_bug = \"sometimes\"\n").is_err());
-    assert!(toml::from_str::<HostConfig>("[policy]\non_bug = \"MovePast\"\n").is_err());
-    assert!(toml::from_str::<HostConfig>("[policy]\non_bugs = \"stay\"\n").is_err());
-}
-
-/// `[retry]` is how the kernel retries a step's retryable failure before
-/// it dead-letters it: `max_retries` (0 turns it off), `max_race_runs`
-/// (the race re-run cap, decision 14.46), `initial_backoff_ms`,
-/// `multiplier`, `max_backoff_ms` and `jitter`, each with a default (3, 10,
-/// 100, 2.0, 5000 and 0.2) when left out, as the whole table may be; an
-/// unknown key is refused.
-#[test]
-fn the_retry_table_sets_the_cap_the_backoff_and_the_jitter() {
-    let retry = |text: &str| toml::from_str::<HostConfig>(text).map(|c| c.retry);
-    assert_eq!(
-        retry(
-            "[retry]\nmax_retries = 5\nmax_race_runs = 4\ninitial_backoff_ms = 50\n\
-             multiplier = 3.0\nmax_backoff_ms = 1000\njitter = 0.5\n"
-        ),
-        Ok(RetryConfig {
-            max_retries: 5,
-            max_race_runs: 4,
-            initial_backoff_ms: 50,
-            multiplier: 3.0,
-            max_backoff_ms: 1_000,
-            jitter: 0.5,
-        })
-    );
-    assert_eq!(
-        retry("[retry]\nmax_retries = 0\n"),
-        Ok(RetryConfig {
-            max_retries: 0,
-            ..RetryConfig::default()
-        })
-    );
-    let defaults = RetryConfig {
-        max_retries: 3,
-        max_race_runs: 10,
-        initial_backoff_ms: 100,
-        multiplier: 2.0,
-        max_backoff_ms: 5_000,
-        jitter: 0.2,
-    };
-    assert_eq!(retry(""), Ok(defaults.clone()));
-    assert_eq!(RetryConfig::default(), defaults);
-    assert!(retry("[retry]\nretries = 5\n").is_err());
-    assert!(retry("[retry]\nmax_retries = -1\n").is_err());
-}
-
-/// The setting writes back as it reads.
-#[test]
-fn the_policy_setting_round_trips() {
-    let config = HostConfig {
-        policy: PolicyConfig {
-            on_bug: OnPolicyBug::Stay,
-        },
-        ..HostConfig::default()
-    };
-    let text = toml::to_string(&config).unwrap();
-    assert!(text.contains("on_bug = \"stay\""), "{text}");
-    assert_eq!(toml::from_str::<HostConfig>(&text).unwrap(), config);
+    language.placement(component)
 }
 
 /// The host knows two languages of its own: Rust, in process, and Python,
@@ -335,7 +115,7 @@ fn a_rust_domain_with_a_launch_is_remote() {
 fn a_loaded_language_with_no_default_needs_a_launch() {
     let go = Language::child("go");
     assert_eq!(
-        domain("dealer", "go").placement(&go),
+        go.placement(&domain("dealer", "go")),
         Err(HostError::NoLaunch {
             domain: "dealer".to_string(),
             language: "go".to_string(),
@@ -343,7 +123,7 @@ fn a_loaded_language_with_no_default_needs_a_launch() {
     );
     let mut dealer = domain("dealer", "go");
     dealer.launch = Some(strings(&["./bin/dealer"]));
-    assert!(matches!(dealer.placement(&go), Ok(Placement::Remote(_))));
+    assert!(matches!(go.placement(&dealer), Ok(Placement::Remote(_))));
 }
 
 /// A loaded language's default launch, then the component's entry.
@@ -353,7 +133,7 @@ fn a_loaded_language_launches_by_its_default() {
     let mut dealer = domain("dealer", "node");
     dealer.entry = strings(&["dealer.js"]);
     assert_eq!(
-        dealer.placement(&node),
+        node.placement(&dealer),
         Ok(Placement::Remote(Launch {
             program: "node".to_string(),
             args: strings(&["dealer.js"]),
@@ -370,12 +150,13 @@ fn a_loaded_language_launches_by_its_default() {
 /// a built-in's name replaces it.
 #[test]
 fn a_language_not_loaded_is_refused_with_its_key_path_and_the_loaded_languages() {
-    let text = "[[component]]\nname = \"table\"\nkind = \"domain\"\nlanguage = \"rust\"\n\n\
-                [[component]]\nname = \"dealer\"\nkind = \"domain\"\nlanguage = \"go\"\n\
-                launch = [\"./bin/dealer\"]\n";
-    let config = HostConfig::from_toml(text, "angzarr.toml").unwrap();
+    let text = stamped(
+        "component:\n  - name: table\n    kind: domain\n    language: rust\n  \
+         - name: dealer\n    kind: domain\n    language: go\n    launch: [./bin/dealer]\n",
+    );
+    let config = parse(&text, "angzarr.yaml").unwrap();
     assert_eq!(
-        config.check_languages(&Languages::builtin()),
+        Languages::builtin().check(&config),
         Err(HostError::UnknownLanguage {
             key: "component[1].language".to_string(),
             language: "go".to_string(),
@@ -384,7 +165,7 @@ fn a_language_not_loaded_is_refused_with_its_key_path_and_the_loaded_languages()
     );
     let loaded = Languages::builtin().with(Language::child("go"));
     assert_eq!(loaded.names().collect::<Vec<_>>(), ["go", "python", "rust"]);
-    assert_eq!(config.check_languages(&loaded), Ok(()));
+    assert_eq!(loaded.check(&config), Ok(()));
     let replaced = Languages::builtin().with(Language::child("python").launched_by(["python3"]));
     assert_eq!(
         replaced.get("python"),
@@ -402,98 +183,6 @@ fn an_empty_launch_is_refused() {
             domain: "player".to_string(),
         })
     );
-}
-
-/// A `[[component]]`'s `kind` names what it is: `"domain"`, `"policy"`,
-/// `"projector"` or `"upcaster"`, with no default; anything else, or none,
-/// is refused.
-#[test]
-fn a_components_kind_is_domain_policy_projector_or_upcaster() {
-    let kind = |text: &str| {
-        toml::from_str::<HostConfig>(&format!(
-            "[[component]]\nname = \"x\"\nlanguage = \"python\"\n{text}"
-        ))
-        .map(|c| c.components[0].kind)
-    };
-    assert!(kind("").is_err(), "a component names its kind");
-    assert_eq!(
-        kind("kind = \"domain\"").unwrap(),
-        ComponentKindConfig::Domain
-    );
-    assert_eq!(
-        kind("kind = \"policy\"").unwrap(),
-        ComponentKindConfig::Policy
-    );
-    assert_eq!(
-        kind("kind = \"projector\"").unwrap(),
-        ComponentKindConfig::Projector
-    );
-    assert_eq!(
-        kind("kind = \"upcaster\"").unwrap(),
-        ComponentKindConfig::Upcaster
-    );
-    assert!(kind("kind = \"saga\"").is_err());
-    assert!(kind("kind = \"Policy\"").is_err());
-}
-
-/// A component's kind writes back as it reads, every kind written.
-#[test]
-fn a_components_kind_is_always_written() {
-    let mut policy = domain("table-player", "python");
-    policy.kind = ComponentKindConfig::Policy;
-    let config = HostConfig {
-        components: vec![domain("player", "python"), policy],
-        ..HostConfig::default()
-    };
-    let text = toml::to_string(&config).unwrap();
-    assert_eq!(text.matches("kind = ").count(), 2, "{text}");
-    assert!(text.contains("kind = \"domain\""), "{text}");
-    assert!(text.contains("kind = \"policy\""), "{text}");
-    assert_eq!(toml::from_str::<HostConfig>(&text).unwrap(), config);
-}
-
-/// A `[[component]]`'s `expose` (red, design-by-test, 2026-10-30): who may
-/// send it commands through the host's listener. `"none"` when left out,
-/// `"loopback"` or `"ip"` when given; anything else is refused.
-#[test]
-fn a_components_expose_is_none_by_default_else_loopback_or_ip() {
-    let expose = |text: &str| {
-        toml::from_str::<HostConfig>(&format!(
-            "[[component]]\nname = \"x\"\nkind = \"domain\"\nlanguage = \"rust\"\n{text}"
-        ))
-        .map(|c| c.components[0].expose)
-    };
-    assert_eq!(expose("").unwrap(), Expose::None);
-    assert_eq!(expose("expose = \"none\"").unwrap(), Expose::None);
-    assert_eq!(expose("expose = \"loopback\"").unwrap(), Expose::Loopback);
-    assert_eq!(expose("expose = \"ip\"").unwrap(), Expose::Ip);
-    assert!(expose("expose = \"Loopback\"").is_err());
-    assert!(expose("expose = \"public\"").is_err());
-    assert!(expose("expose = true").is_err());
-}
-
-/// A component's `expose` writes back as it reads: `"none"`, the default,
-/// is left out.
-#[test]
-fn a_components_expose_is_written_unless_it_is_none() {
-    let mut table = domain("table", "rust");
-    table.expose = Expose::Loopback;
-    let config = HostConfig {
-        components: vec![domain("player", "python"), table],
-        ..HostConfig::default()
-    };
-    let text = toml::to_string(&config).unwrap();
-    assert_eq!(text.matches("expose = ").count(), 1, "{text}");
-    assert!(text.contains("expose = \"loopback\""), "{text}");
-    assert_eq!(toml::from_str::<HostConfig>(&text).unwrap(), config);
-}
-
-/// An exposure admits every arrival a narrower one does: none, then
-/// loopback, then ip.
-#[test]
-fn exposures_widen_from_none_to_loopback_to_ip() {
-    assert!(Expose::None < Expose::Loopback);
-    assert!(Expose::Loopback < Expose::Ip);
 }
 
 /// Only an aggregate is served through the host's listener: a policy, a
@@ -534,97 +223,120 @@ fn exposing_anything_but_a_domain_is_refused_at_start() {
     assert!(host.is_ok(), "{:?}", host.err());
 }
 
-/// A config read strictly ([`HostConfig::from_toml`]): a missing key, an
-/// unknown one or an unknown value is refused, the error naming the
-/// config, the TOML key path where it goes wrong, the byte it starts at,
-/// and the TOML reader's own text.
+/// A config is read through the schema's loader, strictly: one that does
+/// not load is refused as invalid, naming the file and, as its cause, the
+/// reader's error with the key path where it goes wrong.
 mod strict {
+    use angzarr_diagnostic::{Arg, Diagnostic};
+
     use super::*;
 
-    const PLAYER: &str =
-        "[[component]]\nname = \"player\"\nkind = \"domain\"\nlanguage = \"python\"\n";
-
-    /// The key path and the reader's text of `text`'s refusal.
-    fn refused(text: &str) -> (String, String) {
-        match HostConfig::from_toml(text, "angzarr.toml") {
-            Err(HostError::ConfigInvalid {
-                path,
-                key,
-                ext_err_txt,
-                ..
-            }) => {
-                assert_eq!(path, "angzarr.toml");
-                (key, ext_err_txt)
+    /// The cause of `text`'s refusal.
+    fn refused(text: &str) -> Report {
+        match parse(text, "angzarr.yaml") {
+            Err(HostError::ConfigInvalid { path, cause }) => {
+                assert_eq!(path, "angzarr.yaml");
+                cause
             }
             other => panic!("not refused as invalid: {other:?}"),
         }
     }
 
+    /// The code of `cause`'s problem, and its key path if it has one.
+    fn problem(cause: &Report) -> (String, Option<String>) {
+        let args = cause.args();
+        let Some(Arg::Nested(problem)) = args
+            .iter()
+            .find(|(name, _)| *name == "problem")
+            .map(|(_, arg)| arg)
+        else {
+            panic!("no problem in {cause}");
+        };
+        let key_path = problem
+            .args()
+            .into_iter()
+            .find_map(|(name, arg)| match (name, arg) {
+                ("key_path", Arg::Str(path)) => Some(path),
+                _ => None,
+            });
+        (problem.code().to_string(), key_path)
+    }
+
     #[test]
     fn a_valid_config_reads() {
-        let config = HostConfig::from_toml(PLAYER, "angzarr.toml").unwrap();
+        let text =
+            stamped("component:\n  - name: player\n    kind: domain\n    language: python\n");
+        let config = parse(&text, "angzarr.yaml").unwrap();
         assert_eq!(config.components, [domain("player", "python")]);
     }
 
-    /// A component with no `kind`: refused at its table, the text naming
-    /// the key.
-    #[test]
-    fn a_component_with_no_kind_is_refused_at_its_table() {
-        let text = format!("{PLAYER}\n[[component]]\nname = \"table\"\nlanguage = \"rust\"\n");
-        let (key, said) = refused(&text);
-        assert_eq!(key, "component[1]");
-        assert!(said.contains("kind"), "{said}");
-    }
-
-    /// An unknown kind, at its key.
-    #[test]
-    fn an_unknown_kind_is_refused_at_its_key() {
-        let text = format!(
-            "{PLAYER}\n[[component]]\nname = \"t\"\nkind = \"saga\"\nlanguage = \"rust\"\n"
-        );
-        let (key, said) = refused(&text);
-        assert_eq!(key, "component[1].kind");
-        assert!(said.contains("saga"), "{said}");
-    }
-
-    /// An unknown exposure, at its key.
-    #[test]
-    fn an_unknown_exposure_is_refused_at_its_key() {
-        let (key, said) = refused(&format!("{PLAYER}expose = \"public\"\n"));
-        assert_eq!(key, "component[0].expose");
-        assert!(said.contains("public"), "{said}");
-    }
-
-    /// An unknown key in a component, in a table and at the top, each at
-    /// its own path.
+    /// An unknown key, at its path, under the reader's code, naming the
+    /// file it was read from.
     #[test]
     fn an_unknown_key_is_refused_at_its_path() {
-        let (key, said) = refused(&format!("{PLAYER}lanuch = [\"x\"]\n"));
-        assert_eq!(key, "component[0].lanuch");
-        assert!(said.contains("lanuch"), "{said}");
-        assert_eq!(refused("[retry]\nretries = 5\n").0, "retry.retries");
-        assert_eq!(refused("[[domain]]\nname = \"x\"\n").0, "domain[0]");
-    }
-
-    /// A value of the wrong type, at its key.
-    #[test]
-    fn a_value_of_the_wrong_type_is_refused_at_its_key() {
+        let cause = refused(&stamped("store:\n  in_memory: true\n  lanuch: 1\n"));
+        assert_eq!(cause.code(), "angzarr-yaml-load-failed-at");
+        assert!(cause.to_string().contains("source=angzarr.yaml"), "{cause}");
         assert_eq!(
-            refused("[supervision]\ncall_timeout_ms = \"soon\"\n").0,
-            "supervision.call_timeout_ms"
+            problem(&cause),
+            (
+                "angzarr-yaml-decode-unknown-key".to_string(),
+                Some("store.lanuch".to_string())
+            )
         );
     }
 
-    /// TOML that does not parse names the byte it goes wrong at; its key
-    /// path is empty.
+    /// A newer file is refused with the reader's code; a file with no
+    /// stamp, version 0, at the floor.
     #[test]
-    fn malformed_toml_is_refused_at_its_byte() {
-        match HostConfig::from_toml("[store]\nin_memory = \n", "angzarr.toml") {
-            Err(HostError::ConfigInvalid { key, offset, .. }) => {
-                assert_eq!(key, "");
-                assert!(offset >= 8, "{offset}");
-            }
-            other => panic!("{other:?}"),
-        }
+    fn a_newer_or_unstamped_file_is_refused() {
+        assert_eq!(
+            problem(&refused("schema_version: 2\n")).0,
+            "angzarr-yaml-too-new"
+        );
+        assert_eq!(
+            problem(&refused("store:\n  in_memory: true\n")).0,
+            "angzarr-yaml-too-old"
+        );
     }
+
+    /// The old TOML is not YAML this reader takes.
+    #[test]
+    fn the_old_toml_is_refused() {
+        let cause = refused("[[component]]\nname = \"table\"\n");
+        assert_eq!(cause.code(), "angzarr-yaml-load-failed-at");
+    }
+}
+
+/// The config's retry and policy settings are the kernel's: its defaults
+/// are the kernel's own, and each key carries over.
+#[test]
+fn the_retry_and_policy_settings_are_the_kernels() {
+    use angzarr_embedded::{OnPolicyBug, OnRetryable};
+    use std::time::Duration;
+    assert_eq!(
+        on_retryable(&RetryConfig::default()),
+        OnRetryable::default()
+    );
+    assert_eq!(
+        on_retryable(&RetryConfig {
+            max_retries: 5,
+            max_race_runs: 4,
+            initial_backoff_ms: 50,
+            multiplier: 3.0,
+            max_backoff_ms: 1_000,
+            jitter: 0.5,
+        }),
+        OnRetryable {
+            max_retries: 5,
+            max_race_runs: 4,
+            initial_backoff: Duration::from_millis(50),
+            multiplier: 3.0,
+            max_backoff: Duration::from_millis(1_000),
+            jitter: 0.5,
+        }
+    );
+    assert_eq!(on_policy_bug(OnBug::default()), OnPolicyBug::default());
+    assert_eq!(on_policy_bug(OnBug::MovePast), OnPolicyBug::MovePast);
+    assert_eq!(on_policy_bug(OnBug::Stay), OnPolicyBug::Stay);
 }

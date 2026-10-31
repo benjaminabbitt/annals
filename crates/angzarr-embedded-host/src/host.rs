@@ -18,7 +18,7 @@
 //! outline:
 //!
 //! ```ignore
-//! let config = HostConfig::from_toml(include_str!("angzarr.toml"), "angzarr.toml")?;
+//! let config = config::parse(include_str!("angzarr.yaml"), "angzarr.yaml")?;
 //! let host = Host::start(config)?;
 //! let mut registry = Registry::new();
 //! registry.aggregate::<table::Table>(Default::default)?; // in-process
@@ -95,7 +95,7 @@ enum Hosted {
 
 /// One remote component under supervision.
 struct Supervised {
-    /// Its `[[component]]` name.
+    /// Its `component` entry name.
     name: String,
     hosted: Hosted,
     /// Tells the supervisor to stop the child; taken when sent.
@@ -145,7 +145,7 @@ impl Host {
     /// [`Host::start_with_languages`], its supervisors held at `hooks`'
     /// points.
     fn started(config: HostConfig, languages: &Languages, hooks: Hooks) -> Result<Host, HostError> {
-        config.check_languages(languages)?;
+        languages.check(&config)?;
         let mut names = BTreeSet::new();
         let mut remote = Vec::new();
         for (index, component) in config.components.iter().enumerate() {
@@ -166,8 +166,8 @@ impl Host {
                     domain: component.name.clone(),
                 });
             }
-            let language = config.language_of(index, languages)?;
-            if let Placement::Remote(launch) = component.placement(language)? {
+            let language = languages.of(&config, index)?;
+            if let Placement::Remote(launch) = language.placement(component)? {
                 remote.push((component.name.clone(), component.kind, launch, upcasts));
             }
         }
@@ -273,7 +273,7 @@ impl Host {
     }
 
     /// The handler of the remote policy configured as `name` (a
-    /// `[[component]]` of `kind = "policy"`).
+    /// `component` entry of `kind: policy`).
     pub fn policy(&self, name: &str) -> Option<RemotePolicyHandler> {
         self.hosted(name).and_then(|hosted| match hosted {
             Hosted::Policy(handler) => Some(handler.clone()),
@@ -282,7 +282,7 @@ impl Host {
     }
 
     /// The handler of the remote projector configured as `name` (a
-    /// `[[component]]` of `kind = "projector"`).
+    /// `component` entry of `kind: projector`).
     pub fn projector(&self, name: &str) -> Option<RemoteProjectorHandler> {
         self.hosted(name).and_then(|hosted| match hosted {
             Hosted::Projector(handler) => Some(handler.clone()),
@@ -290,7 +290,7 @@ impl Host {
         })
     }
 
-    /// The remote upcaster sidecar configured as `name` (a `[[component]]`
+    /// The remote upcaster sidecar configured as `name` (a `component` entry
     /// of `kind = "upcaster"`).
     pub fn upcaster(&self, name: &str) -> Option<RemoteUpcaster> {
         self.hosted(name).and_then(|hosted| match hosted {

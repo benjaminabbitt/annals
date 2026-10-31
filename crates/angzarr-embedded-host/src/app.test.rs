@@ -43,18 +43,27 @@ impl Drop for Scratch {
 #[test]
 fn a_scratch_directory_is_gone_once_dropped() {
     let dir = scratch("dropped");
-    std::fs::write(dir.join("angzarr.toml"), "").unwrap();
+    std::fs::write(dir.join("angzarr.yaml"), "").unwrap();
     let path = dir.to_path_buf();
     assert!(path.is_dir());
     drop(dir);
     assert!(!path.exists(), "{} was left behind", path.display());
 }
 
-/// `config` written as the TOML the CLI writes, into `dir`.
-fn written(dir: &Path, config: &HostConfig) -> PathBuf {
-    let path = dir.join("angzarr.toml");
-    std::fs::write(&path, toml::to_string(config).unwrap()).unwrap();
+/// `body` stamped at the current version, written as `angzarr.yaml` into
+/// `dir`.
+fn written(dir: &Path, body: &str) -> PathBuf {
+    let path = dir.join(crate::config::FILE_NAME);
+    std::fs::write(&path, crate::config::stamped(body)).unwrap();
     path
+}
+
+/// [`run_with`] on `config`, in the built-in languages.
+async fn run_config(
+    config: &HostConfig,
+    register: impl FnOnce(&mut Registry),
+) -> Result<App, HostError> {
+    run_with(config.clone(), Languages::builtin(), register).await
 }
 
 /// A player domain served by the fake child.
@@ -103,12 +112,9 @@ fn nothing(_: &mut Registry) {}
 /// goes through the kernel and its event is in the store.
 #[tokio::test(flavor = "multi_thread")]
 async fn run_handles_a_command_for_a_remote_domain() {
-    let dir = scratch("memory");
     let mut config = player_config();
     config.store.in_memory = true;
-    let app = run(written(&dir, &config), nothing)
-        .await
-        .expect("the app runs");
+    let app = run_config(&config, nothing).await.expect("the app runs");
     assert!(matches!(
         app.handle(sit_down(1), &sampled(1)).await,
         Ok(Handled::Applied(_))
@@ -131,10 +137,9 @@ async fn run_handles_a_command_for_a_remote_domain() {
 /// what it registers is the kernel's too.
 #[tokio::test(flavor = "multi_thread")]
 async fn run_calls_register_for_the_in_process_domains() {
-    let dir = scratch("register");
     let mut config = player_config();
     config.store.in_memory = true;
-    let app = run(written(&dir, &config), |registry: &mut Registry| {
+    let app = run_config(&config, |registry: &mut Registry| {
         assert_eq!(
             registry.command_handler("player", NoHandler, Default::default()),
             Err(Misconfigured::AlreadyRegistered {
@@ -160,12 +165,11 @@ async fn the_store_is_the_configured_sqlite_file() {
     let dir = scratch("sqlite");
     let mut config = player_config();
     config.store.path = dir.join("app.db");
-    let path = written(&dir, &config);
-    let app = run(&path, nothing).await.unwrap();
+    let app = run_config(&config, nothing).await.unwrap();
     app.handle(sit_down(1), &sampled(1)).await.unwrap();
     drop(app);
     assert!(dir.join("app.db").exists());
-    let app = run(&path, nothing).await.unwrap();
+    let app = run_config(&config, nothing).await.unwrap();
     app.handle(sit_down(2), &sampled(2)).await.unwrap();
     let events: Vec<_> = app
         .events(&player())
@@ -179,45 +183,38 @@ async fn the_store_is_the_configured_sqlite_file() {
 }
 
 /// The kernel the app hands out does with a policy's bug what the
-/// config's `[policy] on_bug` says; the default when it is left out.
+/// config's `policy.on_bug` says; the default when it is left out.
 #[tokio::test(flavor = "multi_thread")]
 async fn the_kernel_follows_the_configs_policy_setting() {
     use angzarr_embedded::OnPolicyBug;
     let dir = scratch("policy");
-    let path = dir.join("angzarr.toml");
-    std::fs::write(&path, "[store]\nin_memory = true\n").unwrap();
+    let path = written(&dir, "store:\n  in_memory: true\n");
     let app = run(&path, nothing).await.unwrap();
     assert_eq!(app.kernel().policy_bug(), OnPolicyBug::MovePast);
     drop(app);
-    std::fs::write(
-        &path,
-        "[store]\nin_memory = true\n\n[policy]\non_bug = \"stay\"\n",
-    )
-    .unwrap();
+    let path = written(&dir, "store:\n  in_memory: true\npolicy:\n  on_bug: stay\n");
     let app = run(&path, nothing).await.unwrap();
     assert_eq!(app.kernel().policy_bug(), OnPolicyBug::Stay);
     drop(app);
 }
 
 /// The kernel the app hands out retries a step's retryable failure as the
-/// config's `[retry]` says, its defaults (the kernel's) when it is left
+/// config's `retry` says, its defaults (the kernel's) when it is left
 /// out: retrying is on with no config.
 #[tokio::test(flavor = "multi_thread")]
 async fn the_kernel_follows_the_configs_retry_setting() {
     use angzarr_embedded::OnRetryable;
     use std::time::Duration;
     let dir = scratch("retry");
-    let path = dir.join("angzarr.toml");
-    std::fs::write(&path, "[store]\nin_memory = true\n").unwrap();
+    let path = written(&dir, "store:\n  in_memory: true\n");
     let app = run(&path, nothing).await.unwrap();
     assert_eq!(app.kernel().retryable(), OnRetryable::default());
     drop(app);
-    std::fs::write(
-        &path,
-        "[store]\nin_memory = true\n\n[retry]\nmax_retries = 5\nmax_race_runs = 4\n\
-         initial_backoff_ms = 50\nmultiplier = 3.0\nmax_backoff_ms = 1000\njitter = 0.5\n",
-    )
-    .unwrap();
+    let path = written(
+        &dir,
+        "store:\n  in_memory: true\nretry:\n  max_retries: 5\n  max_race_runs: 4\n  \
+         initial_backoff_ms: 50\n  multiplier: 3.0\n  max_backoff_ms: 1000\n  jitter: 0.5\n",
+    );
     let app = run(&path, nothing).await.unwrap();
     assert_eq!(
         app.kernel().retryable(),
@@ -236,7 +233,7 @@ async fn the_kernel_follows_the_configs_retry_setting() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_missing_config_is_unreadable() {
     let dir = scratch("missing");
-    let path = dir.join("angzarr.toml");
+    let path = dir.join("angzarr.yaml");
     assert_eq!(
         run(&path, nothing).await.err(),
         Some(HostError::ConfigUnreadable {
@@ -246,29 +243,56 @@ async fn a_missing_config_is_unreadable() {
     );
 }
 
-/// Malformed TOML and an unknown key are both invalid, at the key path
-/// and the byte the problem starts, with the TOML reader's text.
+/// A config that does not load is invalid, its cause the reader's error:
+/// an unknown key at its key path, YAML the reader does not take (the old
+/// TOML among it), a file of a newer version, and one with no stamp.
 #[tokio::test(flavor = "multi_thread")]
 async fn an_invalid_config_is_refused_where_it_goes_wrong() {
     let dir = scratch("invalid");
-    let path = dir.join("angzarr.toml");
-    std::fs::write(&path, "[store]\nin_memory = true\nlanuch = 1\n").unwrap();
+    let path = written(&dir, "store:\n  in_memory: true\n  lanuch: 1\n");
     let refused = run(&path, nothing).await.err();
     assert!(
         matches!(
             &refused,
-            Some(HostError::ConfigInvalid { path: at, key, offset: 25, ext_err_txt })
+            Some(HostError::ConfigInvalid { path: at, cause })
                 if *at == path.display().to_string()
-                    && key == "store.lanuch"
-                    && ext_err_txt.contains("lanuch")
+                    && cause.to_string().starts_with("angzarr-yaml-load-failed-at ")
+                    && cause.to_string().contains("problem.key_path=store.lanuch")
         ),
         "{refused:?}"
     );
-    std::fs::write(&path, "[[domain]\n").unwrap();
-    assert!(matches!(
-        run(&path, nothing).await.err(),
-        Some(HostError::ConfigInvalid { .. })
-    ));
+    for text in [
+        "[[domain]\n",
+        "schema_version: 2\n",
+        "store:\n  in_memory: true\n",
+    ] {
+        std::fs::write(&path, text).unwrap();
+        assert!(
+            matches!(
+                run(&path, nothing).await.err(),
+                Some(HostError::ConfigInvalid { .. })
+            ),
+            "{text:?}"
+        );
+    }
+}
+
+/// A config in hand runs as the same config read from its file does.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_config_in_hand_runs_as_its_file_does() {
+    use angzarr_embedded::OnPolicyBug;
+    let dir = scratch("in-hand");
+    let path = written(&dir, "store:\n  in_memory: true\npolicy:\n  on_bug: stay\n");
+    let text = std::fs::read_to_string(&path).unwrap();
+    let config = crate::config::parse(&text, "angzarr.yaml").unwrap();
+    let from_file = run(&path, nothing).await.unwrap();
+    let in_hand = run_config(&config, nothing).await.unwrap();
+    assert_eq!(in_hand.kernel().policy_bug(), OnPolicyBug::Stay);
+    assert_eq!(
+        in_hand.kernel().policy_bug(),
+        from_file.kernel().policy_bug()
+    );
+    assert_eq!(in_hand.kernel().retryable(), from_file.kernel().retryable());
 }
 
 /// A component in a language the application did not load is refused
@@ -279,13 +303,11 @@ async fn an_invalid_config_is_refused_where_it_goes_wrong() {
 async fn a_language_not_loaded_is_refused_and_one_loaded_runs() {
     use crate::config::{Language, Languages};
     let dir = scratch("languages");
-    let path = dir.join("angzarr.toml");
-    std::fs::write(
-        &path,
-        "[[component]]\nname = \"table\"\nkind = \"domain\"\nlanguage = \"rustacean\"\n\n\
-         [store]\nin_memory = true\n",
-    )
-    .unwrap();
+    let path = written(
+        &dir,
+        "component:\n  - name: table\n    kind: domain\n    language: rustacean\n\
+         store:\n  in_memory: true\n",
+    );
     let refused = run(&path, nothing).await.err();
     assert_eq!(
         refused,
@@ -312,7 +334,7 @@ async fn a_store_that_cannot_open_fails_the_run() {
     let dir = scratch("nostore");
     let mut config = player_config();
     config.store.path = dir.join("no/such/dir/app.db");
-    let failed = run(written(&dir, &config), nothing).await.err();
+    let failed = run_config(&config, nothing).await.err();
     assert!(
         matches!(&failed, Some(HostError::Store { cause }) if cause != &Report::new("")),
         "{failed:?}"
@@ -509,16 +531,14 @@ mod concurrency {
     /// A config listing the in-process aggregates `domains`, and an
     /// in-memory store.
     fn in_memory(dir: &Path, domains: &[&str]) -> PathBuf {
-        let path = dir.join("angzarr.toml");
-        let mut text = String::new();
+        let mut text = String::from("component:\n");
         for domain in domains {
             text.push_str(&format!(
-                "[[component]]\nname = \"{domain}\"\nkind = \"domain\"\nlanguage = \"rust\"\n\n"
+                "  - name: {domain}\n    kind: domain\n    language: rust\n"
             ));
         }
-        text.push_str("[store]\nin_memory = true\n");
-        std::fs::write(&path, text).unwrap();
-        path
+        text.push_str("store:\n  in_memory: true\n");
+        written(dir, &text)
     }
 
     /// The payloads of `cover`'s stream.
@@ -612,7 +632,7 @@ mod concurrency {
 
 /// The exposure seam (red, design-by-test, 2026-10-30): what the host's
 /// listener calls for each request, [`App::serve`]. A domain is served
-/// only to an arrival its `[[component]]`'s `expose` admits; the answer is
+/// only to an arrival its `component` entry's `expose` admits; the answer is
 /// `CommandHandlerCoordinatorService.Handle`'s.
 mod exposure {
     use angzarr_embedded::v1::DeliveryOutcome;
@@ -623,7 +643,7 @@ mod exposure {
     use crate::config::{ComponentConfig, Expose};
     use crate::exposure::Arrival;
 
-    /// An in-process (Rust) aggregate's `[[component]]`, exposed `expose`.
+    /// An in-process (Rust) aggregate's `component` entry, exposed `expose`.
     fn aggregate(name: &str, expose: Expose) -> ComponentConfig {
         ComponentConfig {
             name: name.to_string(),
@@ -640,7 +660,7 @@ mod exposure {
 
     /// `hidden` (exposed none), `local` (loopback) and `open` (ip), all
     /// in-process; each answers a command with one `Gated` event.
-    async fn app(dir: &Path) -> App {
+    async fn app() -> App {
         let mut config = HostConfig {
             components: vec![
                 aggregate("hidden", Expose::None),
@@ -650,7 +670,7 @@ mod exposure {
             ..HostConfig::default()
         };
         config.store.in_memory = true;
-        run(written(dir, &config), |registry: &mut Registry| {
+        run_config(&config, |registry: &mut Registry| {
             for domain in ["hidden", "local", "open"] {
                 registry
                     .command_handler(
@@ -682,8 +702,7 @@ mod exposure {
     /// `"ip"`. The answer is the stream's events, APPLIED.
     #[tokio::test(flavor = "multi_thread")]
     async fn an_exposed_domain_is_served_to_the_arrivals_its_exposure_admits() {
-        let dir = scratch("exposed");
-        let app = app(&dir).await;
+        let app = app().await;
         for (domain, arrived) in [
             ("local", Arrival::Loopback),
             ("open", Arrival::Loopback),
@@ -720,8 +739,7 @@ mod exposure {
     /// nothing is written.
     #[tokio::test(flavor = "multi_thread")]
     async fn a_domain_not_exposed_to_the_arrival_is_refused_as_unknown() {
-        let dir = scratch("not-exposed");
-        let app = app(&dir).await;
+        let app = app().await;
         for (domain, arrived) in [
             ("hidden", Arrival::Loopback),
             ("hidden", Arrival::Ip),
@@ -747,8 +765,7 @@ mod exposure {
     /// arrival.
     #[tokio::test(flavor = "multi_thread")]
     async fn an_unknown_domain_is_the_kernels_unknown_domain() {
-        let dir = scratch("unknown");
-        let app = app(&dir).await;
+        let app = app().await;
         for arrived in [Arrival::Loopback, Arrival::Ip] {
             assert_eq!(
                 app.serve(meet("nowhere"), arrived, &sampled(1)).await.err(),
@@ -773,7 +790,7 @@ mod exposure_edges {
     use crate::config::{ComponentConfig, Expose};
     use crate::exposure::Arrival;
 
-    /// An in-process component's `[[component]]`, exposed `expose`.
+    /// An in-process component's entry, exposed `expose`.
     fn in_process(name: &str, expose: Expose) -> ComponentConfig {
         ComponentConfig {
             name: name.to_string(),
@@ -817,28 +834,23 @@ mod exposure_edges {
 
     /// `quiet`, registered as `kind`, its component (named as decision
     /// 14.50 names it by default) exposed `expose`.
-    async fn quiet(dir: &Path, kind: ComponentKind, expose: Expose) -> Result<App, HostError> {
+    async fn quiet(kind: ComponentKind, expose: Expose) -> Result<App, HostError> {
         let name = match kind {
             ComponentKind::ProcessManager => "pmg-quiet",
             _ => "quiet",
         };
-        quiet_as(dir, name, kind, expose).await
+        quiet_as(name, kind, expose).await
     }
 
     /// `quiet`, registered as `kind`, listed as component `name`, exposed
     /// `expose`.
-    async fn quiet_as(
-        dir: &Path,
-        name: &str,
-        kind: ComponentKind,
-        expose: Expose,
-    ) -> Result<App, HostError> {
+    async fn quiet_as(name: &str, kind: ComponentKind, expose: Expose) -> Result<App, HostError> {
         let mut config = HostConfig {
             components: vec![in_process(name, expose)],
             ..HostConfig::default()
         };
         config.store.in_memory = true;
-        run(written(dir, &config), move |registry: &mut Registry| {
+        run_config(&config, move |registry: &mut Registry| {
             let mut described = descriptor("quiet");
             described.kind = kind as i32;
             if kind == ComponentKind::ProcessManager {
@@ -856,9 +868,8 @@ mod exposure_edges {
     /// descriptor's kind; one not exposed runs.
     #[tokio::test(flavor = "multi_thread")]
     async fn an_exposed_process_manager_is_refused_at_run() {
-        let dir = scratch("exposed-pm");
         assert_eq!(
-            quiet(&dir, ComponentKind::ProcessManager, Expose::Loopback)
+            quiet(ComponentKind::ProcessManager, Expose::Loopback)
                 .await
                 .err(),
             Some(HostError::NotExposable {
@@ -866,29 +877,22 @@ mod exposure_edges {
                 kind: "process_manager".to_string(),
             })
         );
-        let hidden = quiet(&dir, ComponentKind::ProcessManager, Expose::None).await;
+        let hidden = quiet(ComponentKind::ProcessManager, Expose::None).await;
         assert!(hidden.is_ok(), "{:?}", hidden.err());
-        let aggregate = quiet(&dir, ComponentKind::Aggregate, Expose::Loopback).await;
+        let aggregate = quiet(ComponentKind::Aggregate, Expose::Loopback).await;
         assert!(aggregate.is_ok(), "{:?}", aggregate.err());
     }
 
-    /// An in-process process manager's `[[component]]` names it by its
+    /// An in-process process manager's `component` entry names it by its
     /// component name (decision 14.50: `pmg-` and its domain), not by its
     /// domain: listed by its domain it is refused as listed and not
     /// registered.
     #[tokio::test(flavor = "multi_thread")]
     async fn a_process_manager_is_listed_by_its_component_name() {
-        let dir = scratch("pm-name");
-        let named = quiet_as(
-            &dir,
-            "pmg-quiet",
-            ComponentKind::ProcessManager,
-            Expose::None,
-        )
-        .await;
+        let named = quiet_as("pmg-quiet", ComponentKind::ProcessManager, Expose::None).await;
         assert!(named.is_ok(), "{:?}", named.err());
         assert_eq!(
-            quiet_as(&dir, "quiet", ComponentKind::ProcessManager, Expose::None)
+            quiet_as("quiet", ComponentKind::ProcessManager, Expose::None)
                 .await
                 .err(),
             Some(HostError::NotRegistered {
@@ -897,7 +901,7 @@ mod exposure_edges {
             })
         );
         assert_eq!(
-            quiet_as(&dir, "pmg-quiet", ComponentKind::Aggregate, Expose::None)
+            quiet_as("pmg-quiet", ComponentKind::Aggregate, Expose::None)
                 .await
                 .err(),
             Some(HostError::NotRegistered {
@@ -911,8 +915,7 @@ mod exposure_edges {
     /// stream's book, empty.
     #[tokio::test(flavor = "multi_thread")]
     async fn a_decision_with_no_events_answers_the_addressed_stream_empty() {
-        let dir = scratch("quiet");
-        let app = quiet(&dir, ComponentKind::Aggregate, Expose::Ip)
+        let app = quiet(ComponentKind::Aggregate, Expose::Ip)
             .await
             .expect("the app runs");
         let book = book("quiet", 1, 1, "/test.meet.v1.Meet");
@@ -935,7 +938,7 @@ mod exposure_edges {
 }
 
 /// Every component is listed (owner ruling, 2026-10-31): an in-process
-/// component's `[[component]]` names what the application's `register`
+/// component's entry names what the application's `register`
 /// registers, and `run` holds the two to each other, by name and kind. A
 /// listed one nobody registered is refused, and so is one registered and
 /// listed nowhere; the children started are stopped.
@@ -949,7 +952,7 @@ mod listing {
     use super::*;
     use crate::config::{ComponentConfig, ComponentKindConfig, Expose};
 
-    /// An in-process `[[component]]` of `kind`.
+    /// An in-process `component` entry of `kind`.
     fn listed(name: &str, kind: ComponentKindConfig) -> ComponentConfig {
         ComponentConfig {
             name: name.to_string(),
@@ -989,17 +992,13 @@ mod listing {
 
     /// `components` and an in-memory store, run with `left` registered
     /// and what `with` adds.
-    async fn ran(
-        dir: &Path,
-        components: Vec<ComponentConfig>,
-        with: With,
-    ) -> Result<App, HostError> {
+    async fn ran(components: Vec<ComponentConfig>, with: With) -> Result<App, HostError> {
         let mut config = HostConfig {
             components,
             ..HostConfig::default()
         };
         config.store.in_memory = true;
-        run(written(dir, &config), move |registry: &mut Registry| {
+        run_config(&config, move |registry: &mut Registry| {
             let rendezvous = || Meeting(std::sync::Arc::new(Rendezvous::of(1)));
             registry
                 .command_handler("left", rendezvous(), descriptor("left"))
@@ -1022,11 +1021,9 @@ mod listing {
     /// Every kind listed and registered in process runs.
     #[tokio::test(flavor = "multi_thread")]
     async fn every_listed_in_process_component_registered_runs() {
-        let dir = scratch("listed");
         let mut upcaster = listed("left-upcaster", ComponentKindConfig::Upcaster);
         upcaster.upcasts = Some("left".to_string());
         let app = ran(
-            &dir,
             vec![
                 listed("left", ComponentKindConfig::Domain),
                 listed("right", ComponentKindConfig::Domain),
@@ -1048,7 +1045,6 @@ mod listing {
     /// refused by its name and kind.
     #[tokio::test(flavor = "multi_thread")]
     async fn a_listed_component_nobody_registered_is_refused() {
-        let dir = scratch("unregistered");
         let left = || listed("left", ComponentKindConfig::Domain);
         for (component, kind) in [
             (listed("right", ComponentKindConfig::Domain), "domain"),
@@ -1060,9 +1056,7 @@ mod listing {
         ] {
             let name = component.name.clone();
             assert_eq!(
-                ran(&dir, vec![left(), component], With::default())
-                    .await
-                    .err(),
+                ran(vec![left(), component], With::default()).await.err(),
                 Some(HostError::NotRegistered {
                     domain: name,
                     kind: kind.to_string(),
@@ -1077,14 +1071,11 @@ mod listing {
     /// refused as an upcaster with no domain.
     #[tokio::test(flavor = "multi_thread")]
     async fn an_in_process_upcaster_names_a_registered_domain() {
-        let dir = scratch("upcaster");
         let left = || listed("left", ComponentKindConfig::Domain);
         let mut nowhere = listed("upcaster", ComponentKindConfig::Upcaster);
         nowhere.upcasts = Some("nowhere".to_string());
         assert_eq!(
-            ran(&dir, vec![left(), nowhere], With::default())
-                .await
-                .err(),
+            ran(vec![left(), nowhere], With::default()).await.err(),
             Some(HostError::NotRegistered {
                 domain: "upcaster".to_string(),
                 kind: "upcaster".to_string(),
@@ -1092,20 +1083,19 @@ mod listing {
         );
         let none = listed("upcaster", ComponentKindConfig::Upcaster);
         assert_eq!(
-            ran(&dir, vec![left(), none], With::default()).await.err(),
+            ran(vec![left(), none], With::default()).await.err(),
             Some(HostError::UpcasterNoDomain {
                 domain: "upcaster".to_string(),
             })
         );
     }
 
-    /// A component registered in process that no `[[component]]` lists,
+    /// A component registered in process that no `component` entry lists,
     /// of each kind, is refused by its name and kind.
     #[tokio::test(flavor = "multi_thread")]
     async fn a_registered_component_listed_nowhere_is_refused() {
-        let dir = scratch("unlisted");
         assert_eq!(
-            ran(&dir, Vec::new(), With::default()).await.err(),
+            ran(Vec::new(), With::default()).await.err(),
             Some(HostError::NotListed {
                 domain: "left".to_string(),
                 kind: "domain".to_string(),
@@ -1119,7 +1109,6 @@ mod listing {
         };
         assert_eq!(
             ran(
-                &dir,
                 domains(),
                 With {
                     right: true,
@@ -1136,7 +1125,6 @@ mod listing {
         );
         assert_eq!(
             ran(
-                &dir,
                 domains(),
                 With {
                     right: true,
@@ -1157,7 +1145,6 @@ mod listing {
     /// policy: names are held to their kind.
     #[tokio::test(flavor = "multi_thread")]
     async fn a_listing_of_another_kind_does_not_list_a_component() {
-        let dir = scratch("same-name");
         let mut config = HostConfig {
             components: vec![
                 listed("left", ComponentKindConfig::Domain),
@@ -1166,7 +1153,7 @@ mod listing {
             ..HostConfig::default()
         };
         config.store.in_memory = true;
-        let refused = run(written(&dir, &config), |registry: &mut Registry| {
+        let refused = run_config(&config, |registry: &mut Registry| {
             for domain in ["left", "right"] {
                 registry
                     .command_handler(
@@ -1193,10 +1180,8 @@ mod listing {
     /// refused as the listed kind nobody registered.
     #[tokio::test(flavor = "multi_thread")]
     async fn a_component_registered_as_another_kind_is_refused() {
-        let dir = scratch("other-kind");
         assert_eq!(
             ran(
-                &dir,
                 vec![listed("left", ComponentKindConfig::Policy)],
                 With::default()
             )
@@ -1334,7 +1319,7 @@ mod resume {
             ..HostConfig::default()
         };
         config.store.path = db.clone();
-        let app = run(written(&dir, &config), |registry: &mut Registry| {
+        let app = run_config(&config, |registry: &mut Registry| {
             left(registry);
             registry
                 .command_handler(

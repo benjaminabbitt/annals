@@ -386,14 +386,25 @@ fn the_kernels_codes_lost_next_and_collide_with_nothing() {
     assert!(problems.is_empty(), "{}", problems.join("\n"));
 }
 
+/// The crates outside this workspace whose errors this workspace's carry
+/// under their own codes, each with its exported en-US catalog:
+/// angzarr-ports (the store errors angzarr-embedded forwards) and
+/// angzarr-yaml (the host config's load errors, the cause of
+/// angzarr-embedded-host's `ConfigInvalid`).
+fn foreign() -> [(&'static str, &'static str); 2] {
+    [
+        angzarr_ports::EN_US,
+        angzarr_embedded_host::angzarr_embedded_host_config::angzarr_yaml::EN_US,
+    ]
+}
+
 /// The crate a code belongs to: the longest name it starts with, of the
-/// checked crates and angzarr-ports (whose store errors angzarr-embedded
-/// forwards under their own codes).
+/// checked crates and the [`foreign`] ones.
 fn owner(code: &str) -> Option<&'static str> {
     samples()
         .into_iter()
         .map(|(krate, _)| krate)
-        .chain(["angzarr-ports"])
+        .chain(foreign().map(|(krate, _)| krate))
         .filter(|k| code.starts_with(&format!("{k}-")))
         .max_by_key(|k| k.len())
 }
@@ -401,22 +412,22 @@ fn owner(code: &str) -> Option<&'static str> {
 /// `code`'s message in `locale`, rendered with `args`: the text, and every
 /// error Fluent reported (a variable the message names and `args` lack is
 /// one). The catalog is the code's owner's ([`owner`]): a checked crate's
-/// file, or angzarr-ports' own `EN_US`.
+/// file, or a [`foreign`] crate's own `EN_US`.
 fn render(code: &str, args: &[(&str, Arg)], locale: &str) -> (String, Vec<String>) {
     use fluent_bundle::{FluentArgs, FluentBundle, FluentResource, FluentValue};
     let krate = owner(code).unwrap_or_else(|| panic!("{code}: no crate owns it"));
-    let (path, text) = match krate {
-        "angzarr-ports" if locale == "en-US" => (
-            PathBuf::from("angzarr_ports::EN_US"),
-            angzarr_ports::EN_US.1.to_string(),
-        ),
-        "angzarr-ports" => {
+    let exported = foreign().into_iter().find(|(name, _)| *name == krate);
+    let (path, text) = match exported {
+        Some((name, text)) if locale == "en-US" => {
+            (PathBuf::from(format!("{name}::EN_US")), text.to_string())
+        }
+        Some((name, _)) => {
             return (
                 String::new(),
-                vec![format!("{code}: angzarr-ports ships no {locale} catalog")],
+                vec![format!("{code}: {name} ships no {locale} catalog")],
             )
         }
-        _ => {
+        None => {
             let path = crates_dir()
                 .join(krate)
                 .join("locales")

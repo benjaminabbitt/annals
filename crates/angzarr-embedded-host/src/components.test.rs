@@ -6,8 +6,8 @@
 //!   child's descriptor (`ComponentDescriptor.starting_types`), with no
 //!   call to the child: admit is coordinator work (decisions 14.39, 14.41,
 //!   14.42). There is no admit RPC.
-//! - A `[[component]]` of `kind = "policy"` is a `PolicyService` child, run
-//!   by the kernel as any policy of its source; one of `kind = "projector"`
+//! - A `component` entry of `kind: policy` is a `PolicyService` child, run
+//!   by the kernel as any policy of its source; one of `kind: projector`
 //!   a `ProjectorService` child, run after each commit of its source's
 //!   events, its failures following the four classes (decision 14.37). A
 //!   child that describes itself as another kind is refused at start.
@@ -414,7 +414,7 @@ fn a_remote_process_managers_start_rule_matches_by_type_name_whatever_the_prefix
 // A remote policy.
 // ---------------------------------------------------------------------
 
-/// A remote policy `table-wallet`, `kind = "policy"`, from `table` to
+/// A remote policy `table-wallet`, `kind: policy`, from `table` to
 /// `wallet`, logging its calls to `log`.
 fn policy_domain(log: &Path) -> ComponentConfig {
     let mut policy = with_env(
@@ -430,7 +430,7 @@ fn policy_domain(log: &Path) -> ComponentConfig {
     policy
 }
 
-/// `kind = "policy"` launches a `PolicyService` child, handed back as a
+/// `kind: policy` launches a `PolicyService` child, handed back as a
 /// policy (named by its descriptor, its source its descriptor's one input),
 /// never as a domain.
 #[test]
@@ -552,7 +552,7 @@ fn a_refusal_of_a_remote_policys_command_is_answered_by_its_on_refused() {
 // A remote projector.
 // ---------------------------------------------------------------------
 
-/// A remote projector `table-view`, `kind = "projector"`, of `table`,
+/// A remote projector `table-view`, `kind: projector`, of `table`,
 /// logging its calls to `log`.
 fn projector_domain(log: &Path) -> ComponentConfig {
     let mut projector = with_env(
@@ -591,7 +591,7 @@ fn quick() -> OnRetryable {
     }
 }
 
-/// `kind = "projector"` launches a `ProjectorService` child, handed back as
+/// `kind: projector` launches a `ProjectorService` child, handed back as
 /// a projector of its descriptor's inputs, never as a domain.
 #[test]
 fn a_projector_child_comes_up_as_a_projector_not_a_domain() {
@@ -818,7 +818,7 @@ fn a_remote_projectors_retryable_failure_with_retrying_off_is_returned() {
 // ---------------------------------------------------------------------
 
 /// A child that describes itself as another kind than its `kind` says is
-/// refused at start: here a `kind = "policy"` child that is an aggregate.
+/// refused at start: here a `kind: policy` child that is an aggregate.
 #[test]
 fn a_child_of_another_kind_than_configured_is_refused() {
     let mut policy = domain("table-wallet", "TableWalletPolicy", mode::SERVE);

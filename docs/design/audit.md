@@ -817,7 +817,7 @@ kernel.resume(&store, &sampled, &mut projections).await?;                       
   the trigger, the dead letter being the record to replay, and under
   `OnPolicyBug::Stay` it stays at the trigger, so `resume` runs the step
   again and dead-letters it again while the bug stands. The host reads it
-  from `angzarr.toml`'s `[policy] on_bug = "move_past" | "stay"`
+  from `angzarr.yaml`'s `policy.on_bug: move_past | stay`
   (`move_past` when left out); the host has no other configuration
   source.
 - **Re-runs always deduplicate** (see [below](#re-runs)).
@@ -1037,7 +1037,7 @@ off. `Kernel::wait_with(&dyn Wait)` sets the timer and the jitter's draw:
 the kernel's own sleeps on a thread of its own, and on wasm32, which has
 no threads, waits not at all (a retry runs at once; an application there
 injects its timer to wait out the backoff); a test injects its own.
-The host reads `[retry]` (`max_retries`, `initial_backoff_ms`,
+The host reads `angzarr.yaml`'s `retry` (`max_retries`, `initial_backoff_ms`,
 `multiplier`, `max_backoff_ms`, `jitter`).
 
 **Trigger edges are tracing.** No event records the edge from a trigger

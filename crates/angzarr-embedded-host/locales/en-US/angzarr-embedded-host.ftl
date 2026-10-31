@@ -28,9 +28,9 @@ angzarr-embedded-host-socket-dir-too-long = socket_dir "{ $dir }" is too long fo
        *[other] { $max_bytes } bytes
     }
 angzarr-embedded-host-config-unreadable = the config { $path } could not be read ({ $kind })
-angzarr-embedded-host-config-invalid = the config { $path } is not valid at "{ $key }" (byte { $offset }): { $ext_err_txt }
+angzarr-embedded-host-config-invalid = the config { $path } is not valid: { $cause }
 angzarr-embedded-host-not-registered = component "{ $domain }" is listed as an in-process { $kind }, but the application registered none
-angzarr-embedded-host-not-listed = the application registered the in-process { $kind } "{ $domain }", but no [[component]] lists it
+angzarr-embedded-host-not-listed = the application registered the in-process { $kind } "{ $domain }", but no component entry lists it
 angzarr-embedded-host-register = a component could not be registered: { $cause }
 angzarr-embedded-host-store = the store could not be opened: { $cause }
 angzarr-embedded-host-descriptor-missing-rules-version = component "{ $component }": its descriptor has no rules version

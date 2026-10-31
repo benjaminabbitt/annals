@@ -5,7 +5,7 @@
 //! ones: a domain as an angzarr-router [`CommandHandler`], a policy as a
 //! [`PolicyComponent`], a projector as a [`ProjectorHandler`].
 //!
-//! For each remote `[[component]]` of a [`HostConfig`], [`Host::start`]:
+//! For each remote `component` entry of a [`HostConfig`], [`Host::start`]:
 //!
 //! 1. launches the child with its launch command (the config's, or its
 //!    language's default: [`Language::launched_by`]), `ANGZARR_SOCKET` set
@@ -47,7 +47,9 @@ pub mod host;
 pub mod remote;
 pub mod rpc;
 
-pub use app::{run, run_with_languages, App};
+/// The host config's schema crate, whose types [`config`] re-exports.
+pub use angzarr_embedded_host_config;
+pub use app::{run, run_with, run_with_languages, App};
 pub use config::{
     ComponentConfig, ComponentKindConfig, Expose, HostConfig, Language, Languages, Launch,
     Placement, StoreConfig, Supervision,

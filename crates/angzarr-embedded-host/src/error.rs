@@ -58,10 +58,10 @@ impl Diagnostic for HandshakeError {
 
 /// Why the host could not start: a config it refuses, or a remote
 /// component that did not come up. Every variant about one component names
-/// it as `domain`: its `[[component]]` name.
+/// it as `domain`: its `component` entry name.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum HostError {
-    /// Two `[[component]]` tables with one name.
+    /// Two `component` entries with one name.
     DuplicateDomain { domain: String },
     /// A remote component whose language has no default launch command, and
     /// whose config gives none.
@@ -69,7 +69,7 @@ pub enum HostError {
     /// A `launch` with no program in it.
     EmptyLaunch { domain: String },
     /// A component whose `language` is not one of the languages loaded
-    /// (`config::Languages`): `key` its TOML key path
+    /// (`config::Languages`): `key` its key path
     /// (`component[1].language`), `loaded` the loaded languages' names, in
     /// order, comma-separated.
     UnknownLanguage {
@@ -112,7 +112,7 @@ pub enum HostError {
     /// (`upcasts`).
     UpcasterNoDomain { domain: String },
     /// A component given an `expose` other than `"none"` that is not an
-    /// aggregate: `kind` is its `kind`, by its TOML name. Only an aggregate
+    /// aggregate: `kind` is its `kind`, by its name in the config. Only an aggregate
     /// is served through the host's listener.
     NotExposable { domain: String, kind: String },
     /// The child's descriptor fails the coordinator's validation
@@ -132,25 +132,20 @@ pub enum HostError {
     /// The config file could not be read. `kind` is the I/O error's
     /// `std::io::ErrorKind`, by name.
     ConfigUnreadable { path: String, kind: String },
-    /// The config file is not a valid config: malformed TOML, an unknown
-    /// key, a missing one, a value outside its closed set or of the wrong
-    /// type. `key` is the TOML key path where it goes wrong
-    /// (`component[1].kind`; a missing key's table; empty for TOML that
-    /// does not parse), `offset` the byte where the problem starts, and
-    /// `ext_err_txt` the TOML reader's text, as it said it.
-    ConfigInvalid {
-        path: String,
-        key: String,
-        offset: u64,
-        ext_err_txt: String,
-    },
-    /// An in-process component its `[[component]]` lists (`kind` its TOML
-    /// kind) that the application's `register` did not register: no
+    /// The config file does not load: YAML the reader does not take, a
+    /// `schema_version` newer than this build reads or older than the
+    /// oldest it reads (none is version 0), an unknown key, a missing one,
+    /// a value outside its closed set or of the wrong type. `cause` is the
+    /// reader's error, angzarr-yaml's `LoadError`, naming for a decode the
+    /// key path where it goes wrong (`component[1].kind`).
+    ConfigInvalid { path: String, cause: Report },
+    /// An in-process component its `component` entry lists (`kind` its kind
+    /// in the config) that the application's `register` did not register: no
     /// domain, policy or projector of that name, or, for an upcaster, no
     /// domain here of its `upcasts`.
     NotRegistered { domain: String, kind: String },
     /// A component the application's `register` registered in process
-    /// (`kind` its TOML kind) that no `[[component]]` lists as an
+    /// (`kind` its kind in the config) that no `component` entry lists as an
     /// in-process component of that kind: every component is listed.
     NotListed { domain: String, kind: String },
     /// The registry refused a domain (the kernel's `Misconfigured`).
@@ -268,16 +263,9 @@ impl Diagnostic for HostError {
                 ("path", path.as_str().into()),
                 ("kind", kind.as_str().into()),
             ],
-            HostError::ConfigInvalid {
-                path,
-                key,
-                offset,
-                ext_err_txt,
-            } => vec![
+            HostError::ConfigInvalid { path, cause } => vec![
                 ("path", path.as_str().into()),
-                ("key", key.as_str().into()),
-                ("offset", (*offset).into()),
-                ("ext_err_txt", ext_err_txt.as_str().into()),
+                ("cause", Arg::nested(cause)),
             ],
             HostError::Register { cause } | HostError::Store { cause } => {
                 vec![("cause", Arg::nested(cause))]
@@ -357,14 +345,15 @@ pub(crate) fn diagnostic_samples() -> Vec<Box<dyn Diagnostic>> {
             max_bytes: 65,
         }),
         Box::new(HostError::ConfigUnreadable {
-            path: "angzarr.toml".to_string(),
+            path: "angzarr.yaml".to_string(),
             kind: "NotFound".to_string(),
         }),
         Box::new(HostError::ConfigInvalid {
-            path: "angzarr.toml".to_string(),
-            key: "component[1].kind".to_string(),
-            offset: 12,
-            ext_err_txt: "unknown variant `saga`".to_string(),
+            path: "angzarr.yaml".to_string(),
+            cause: Report::of(
+                &crate::config::HostConfig::from_yaml("schema_version: 2\n", "angzarr.yaml")
+                    .expect_err("a newer config is refused"),
+            ),
         }),
         Box::new(HostError::NotRegistered {
             domain: d(),

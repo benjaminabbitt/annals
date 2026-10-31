@@ -216,7 +216,7 @@ impl RemoteCommandHandler {
         self.inner.link.generation.subscribe()
     }
 
-    /// The domain this handler is configured for: its `[[component]]`
+    /// The domain this handler is configured for: its `component` entry
     /// name.
     pub fn domain(&self) -> &str {
         &self.inner.name
@@ -303,7 +303,7 @@ impl RemotePolicyHandler {
         }
     }
 
-    /// The `[[component]]` name it is configured as.
+    /// The `component` entry name it is configured as.
     pub fn configured(&self) -> &str {
         &self.inner.name
     }
@@ -402,7 +402,7 @@ impl RemoteUpcaster {
         }
     }
 
-    /// The `[[component]]` name it is configured as.
+    /// The `component` entry name it is configured as.
     pub fn configured(&self) -> &str {
         &self.inner.name
     }
@@ -498,7 +498,7 @@ impl RemoteProjectorHandler {
         }
     }
 
-    /// The `[[component]]` name it is configured as.
+    /// The `component` entry name it is configured as.
     pub fn configured(&self) -> &str {
         &self.inner.name
     }
