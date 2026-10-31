@@ -69,7 +69,9 @@ fn the_file_is_angzarr_yaml_stamped_schema_version_at_version_1() {
     let loader = loader();
     assert_eq!(loader.kind(), "angzarr-host-config");
     assert_eq!(loader.key(), "schema_version");
-    assert_eq!(loader.current(), 1);
+    // No older generation, so no step: the reader itself reads a file with
+    // no stamp as current.
+    assert_eq!((loader.oldest(), loader.current()), (1, 1));
     assert_eq!(CURRENT, 1);
     assert_eq!(loader.legacy_key(), None);
 }
