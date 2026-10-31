@@ -20,8 +20,9 @@ crate under `crates/<crate>/locales/`. angzarr core also holds the strict
 YAML reader with versioned documents (`angzarr-yaml`), which this
 repository's crates do not use.
 
-An application pins only angzarr-embedded (and angzarr-cli, for its
-generated code): angzarr-embedded re-exports, at its root, the crates the
+An application pins none of the crates beneath angzarr-embedded: only this
+repository's crates it uses (angzarr-embedded, and angzarr-embedded-macros or
+-host) and angzarr-cli, for its generated code. angzarr-embedded re-exports, at its root, the crates the
 kernel is built on, `angzarr_embedded::angzarr_proto`, `angzarr_ports`,
 `angzarr_diagnostic` and `angzarr_router`, and, with its `sqlite` feature
 (off by default: it brings sqlx and SQLite), `angzarr_store_sqlite`. The

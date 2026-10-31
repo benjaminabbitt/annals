@@ -1,6 +1,6 @@
 //! The crates angzarr-embedded re-exports at its root, so an application
-//! pins only angzarr-embedded (and angzarr-cli) and names each through it:
-//! the very crates the kernel is built on, not copies.
+//! pins none of them itself and names each through it: the very crates the
+//! kernel is built on, not copies.
 
 #[test]
 fn angzarr_proto_is_the_kernels_own() {

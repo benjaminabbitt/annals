@@ -81,7 +81,8 @@ angzarr-embedded depends on it the other way only optionally, behind its
 gets SQLite unasked), to re-export it as
 `angzarr_embedded::angzarr_store_sqlite`; it re-exports angzarr-proto,
 angzarr-ports, angzarr-diagnostic and angzarr-router at its root too, so an
-application pins angzarr-embedded alone.
+application pins none of them: only this repository's crates it uses
+(angzarr-embedded, and angzarr-embedded-macros or -host) and angzarr-cli.
 
 angzarr-embedded-host depends on `angzarr-embedded` (the kernel's `Registry`,
 which `Host::register` fills), `angzarr-router` and `angzarr-proto`

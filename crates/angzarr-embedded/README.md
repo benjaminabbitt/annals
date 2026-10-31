@@ -12,8 +12,8 @@ whose build runs `protoc`.
 Each is re-exported at the root (`angzarr_embedded::angzarr_proto`,
 `angzarr_ports`, `angzarr_diagnostic`, `angzarr_router`), and the shared
 SQLite store too (`angzarr_embedded::angzarr_store_sqlite`) with the
-`sqlite` feature, off by default, so an application pins angzarr-embedded
-alone.
+`sqlite` feature, off by default, so an application pins none of them
+itself.
 
 ## The model
 
