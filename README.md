@@ -52,16 +52,15 @@ its config is `.cargo/mutants.toml`.
 
 Licensed under either of Apache License 2.0 or BSD 3-Clause, at your option.
 
-Some of angzarr-embedded's crates depend on `angzarr-proto`, angzarr's wire types,
-which is AGPL-3.0-only. In a normal build (dev-dependencies, which only
-tests build, aside):
+Some of angzarr-embedded's crates depend on `angzarr-proto`, angzarr's wire
+types, and `angzarr-ports`, its store contract: angzarr core's crates, which
+are Apache-2.0 OR BSD-3-Clause too. In a normal build (dev-dependencies, which
+only tests build, aside):
 
 - **Carry angzarr-proto:** `angzarr-embedded` and `angzarr-embedded-host`,
   which depend on it directly, and `angzarr-store-sqlite`, which depends on
-  angzarr-ports (AGPL-3.0-only too). A binary that links any of these is effectively AGPL-3.0-only:
-  their source stays Apache-2.0 OR BSD-3-Clause, but the linked whole carries
-  angzarr-proto's terms.
-- **Apache-2.0 OR BSD-3-Clause only:** `angzarr-embedded-catalog-check` and `angzarr-embedded-macros`.
+  angzarr-ports.
+- **Do not carry angzarr-proto:** `angzarr-embedded-catalog-check` and `angzarr-embedded-macros`.
   `angzarr-embedded-catalog-check` and `angzarr-embedded-macros` reach angzarr-proto only
   through dev-dependencies, so their tests link it but
   a binary built on them does not.
