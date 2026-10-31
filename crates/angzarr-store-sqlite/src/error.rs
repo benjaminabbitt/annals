@@ -1,9 +1,10 @@
 //! Why SQLite could not answer, and how that reaches the ports.
 //!
-//! In angzarr-ports' style, depending on no diagnostics crate: every error
-//! has a stable kebab-case `code` starting with this crate's name and named
-//! `args` that carry data, and its `Display` is the code then the args
-//! (` name=value` each), never English (angzarr decision 14.37). What the
+//! In angzarr-ports' style, through its re-export of angzarr-diagnostic (no
+//! dependency of its own): every error is a `Diagnostic`, a stable
+//! kebab-case `code` starting with this crate's name and named `args` that
+//! carry data, and its `Display` is the code then the args (` name=value`
+//! each), never English (angzarr decision 14.37). What the
 //! store answers through the ports is angzarr-ports' [`StoreError`], whose
 //! `Unavailable` and `Unreadable` carry this crate's failure as a
 //! [`Cause`], its code and args. A third party's error (SQLite's, the
@@ -13,6 +14,7 @@
 
 use std::fmt;
 
+use angzarr_ports::angzarr_diagnostic::{self, Diagnostic};
 use angzarr_ports::{Arg, Cause, StoreError};
 
 /// The database's own failures, as causes.
@@ -83,51 +85,27 @@ impl SqlError {
     }
 }
 
-/// `value` as a code-plus-args display writes it (decision 14.37): bare,
-/// unless it would not parse back (empty, or holding whitespace, `=`, `"`
-/// or `\`), then double-quoted with its `"` and `\` backslash-escaped.
-fn write_value(f: &mut fmt::Formatter<'_>, value: &str) -> fmt::Result {
-    let ambiguous = value.is_empty()
-        || value
-            .chars()
-            .any(|c| c.is_whitespace() || matches!(c, '=' | '"' | '\\'));
-    if !ambiguous {
-        return f.write_str(value);
-    }
-    f.write_str("\"")?;
-    for c in value.chars() {
-        if matches!(c, '"' | '\\') {
-            f.write_str("\\")?;
-        }
-        write!(f, "{c}")?;
-    }
-    f.write_str("\"")
+/// `args` as angzarr-diagnostic's: angzarr-ports' `From`, each by name.
+fn diagnostic_args(args: Vec<(&'static str, Arg)>) -> Vec<(&'static str, angzarr_diagnostic::Arg)> {
+    args.into_iter()
+        .map(|(name, arg)| (name, arg.into()))
+        .collect()
 }
 
-/// `code`, then each arg as ` name=value`, a text value quoted where it
-/// would not parse back ([`write_value`]).
-fn write_keyed(
-    f: &mut fmt::Formatter<'_>,
-    code: &str,
-    args: &[(&'static str, Arg)],
-) -> fmt::Result {
-    f.write_str(code)?;
-    for (name, arg) in args {
-        match arg {
-            Arg::Uint(n) => write!(f, " {name}={n}")?,
-            Arg::Str(s) => {
-                write!(f, " {name}=")?;
-                write_value(f, s)?;
-            }
-            Arg::Cause(cause) => write!(f, " {name}={}", cause.code)?,
-        }
+impl Diagnostic for SqlError {
+    fn code(&self) -> &str {
+        SqlError::code(self)
     }
-    Ok(())
+
+    fn args(&self) -> Vec<(&str, angzarr_diagnostic::Arg)> {
+        diagnostic_args(SqlError::args(self))
+    }
 }
 
+/// The code then the args (decision 14.37): angzarr-diagnostic's display.
 impl fmt::Display for SqlError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write_keyed(f, self.code(), &self.args())
+        angzarr_diagnostic::display(self, f)
     }
 }
 
@@ -177,9 +155,20 @@ impl Damage {
     }
 }
 
+impl Diagnostic for Damage {
+    fn code(&self) -> &str {
+        Damage::code(self)
+    }
+
+    fn args(&self) -> Vec<(&str, angzarr_diagnostic::Arg)> {
+        diagnostic_args(Damage::args(self))
+    }
+}
+
+/// The code then the args (decision 14.37): angzarr-diagnostic's display.
 impl fmt::Display for Damage {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write_keyed(f, self.code(), &self.args())
+        angzarr_diagnostic::display(self, f)
     }
 }
 

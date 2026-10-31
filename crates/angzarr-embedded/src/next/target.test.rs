@@ -25,7 +25,7 @@ use crate::next::{
     rejection, Any, Failure, Handled, Kernel, KernelError, Malformed, MemoryDeadLetters,
     Misconfigured, Registry,
 };
-use angzarr_embedded_diagnostic::{Diagnostic, Report};
+use angzarr_diagnostic::{Diagnostic, Report};
 
 fn any(type_url: &str) -> Any {
     Any {

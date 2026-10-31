@@ -1,8 +1,8 @@
 use std::path::{Path, PathBuf};
 
+use angzarr_diagnostic::Report;
 use angzarr_embedded::next::v1::{command_page, Command, CommandBook, CommandPage, Cover, Uuid};
 use angzarr_embedded::next::{Any, Handled, Misconfigured, Registry, Sampled, Timestamp};
-use angzarr_embedded_diagnostic::Report;
 
 use super::*;
 use crate::config::HostConfig;

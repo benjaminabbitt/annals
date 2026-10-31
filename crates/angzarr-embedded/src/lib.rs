@@ -17,20 +17,21 @@ pub const EN_US: (&str, &str) = (
     include_str!("../locales/en-US/angzarr-embedded.ftl"),
 );
 
-/// angzarr-ports' en-US Fluent catalog, its name first: the messages for
-/// the store's errors, which angzarr-embedded forwards under angzarr-ports' own
-/// codes ([`next::KernelError::Store`]). angzarr-ports ships no catalog, so
-/// the runtime that surfaces its errors carries one. The text of
-/// `crates/angzarr-embedded/locales/en-US/angzarr-ports.ftl`.
-pub const ANGZARR_PORTS_EN_US: (&str, &str) = (
-    "angzarr-ports",
-    include_str!("../locales/en-US/angzarr-ports.ftl"),
-);
+/// angzarr-diagnostic, the crate every error here implements
+/// (`Diagnostic`, `Arg`, `Report`, `display`, and its `catalog` parity
+/// check), re-exported so a dependent names the one this crate is built on.
+pub use angzarr_diagnostic;
+
+/// angzarr-ports, the store contract the kernel runs on, re-exported (as
+/// `next::angzarr_ports` is). Its en-US catalog, the messages for the store
+/// errors this crate forwards under their own codes
+/// ([`next::KernelError::Store`]), is `angzarr_ports::EN_US`.
+pub use angzarr_ports;
 
 /// One value of every error this crate defines, each variant once, for the
 /// catalog parity test: each one's code must have a message in every locale,
 /// using exactly its args. Its messages are in
 /// `crates/angzarr-embedded/locales/en-US/angzarr-embedded.ftl`.
-pub fn diagnostic_samples() -> Vec<Box<dyn angzarr_embedded_diagnostic::Diagnostic>> {
+pub fn diagnostic_samples() -> Vec<Box<dyn angzarr_diagnostic::Diagnostic>> {
     next::diagnostic_samples()
 }

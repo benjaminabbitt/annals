@@ -192,7 +192,7 @@
 //! object, the markup's spelling of the proto's `(command).refuses`:
 //! `#[handles_cmd(Hold, refuses(InsufficientFunds, WalletClosed))]`. Each
 //! listed type is a domain type of the command's own domain (a
-//! `DomainMessage`, never an event) and an `angzarr_embedded_diagnostic::Diagnostic`,
+//! `DomainMessage`, never an event) and an `angzarr_diagnostic::Diagnostic`,
 //! whose message is the refusal's. The handler's `Err` is then
 //! `Refuses<Self, Hold>`, a choice the macro builds of exactly those
 //! types, each `From` its type: `Err(InsufficientFunds { .. }.into())`. An
@@ -1423,9 +1423,9 @@
 //! #                 f.write_str(stringify!($name))
 //! #             }
 //! #         }
-//! #         impl angzarr_embedded_diagnostic::Diagnostic for $name {
+//! #         impl angzarr_diagnostic::Diagnostic for $name {
 //! #             fn code(&self) -> &str { "lamp-refused" }
-//! #             fn args(&self) -> Vec<(&'static str, angzarr_embedded_diagnostic::Arg)> { vec![] }
+//! #             fn args(&self) -> Vec<(&'static str, angzarr_diagnostic::Arg)> { vec![] }
 //! #         }
 //! #     )*};
 //! # }
@@ -1556,9 +1556,9 @@
 //! #                 f.write_str(stringify!($name))
 //! #             }
 //! #         }
-//! #         impl angzarr_embedded_diagnostic::Diagnostic for $name {
+//! #         impl angzarr_diagnostic::Diagnostic for $name {
 //! #             fn code(&self) -> &str { "lamp-refused" }
-//! #             fn args(&self) -> Vec<(&'static str, angzarr_embedded_diagnostic::Arg)> { vec![] }
+//! #             fn args(&self) -> Vec<(&'static str, angzarr_diagnostic::Arg)> { vec![] }
 //! #         }
 //! #     )*};
 //! # }
@@ -1643,9 +1643,9 @@
 //! #                 f.write_str(stringify!($name))
 //! #             }
 //! #         }
-//! #         impl angzarr_embedded_diagnostic::Diagnostic for $name {
+//! #         impl angzarr_diagnostic::Diagnostic for $name {
 //! #             fn code(&self) -> &str { "lamp-refused" }
-//! #             fn args(&self) -> Vec<(&'static str, angzarr_embedded_diagnostic::Arg)> { vec![] }
+//! #             fn args(&self) -> Vec<(&'static str, angzarr_diagnostic::Arg)> { vec![] }
 //! #         }
 //! #     )*};
 //! # }
@@ -1730,9 +1730,9 @@
 //! #                 f.write_str(stringify!($name))
 //! #             }
 //! #         }
-//! #         impl angzarr_embedded_diagnostic::Diagnostic for $name {
+//! #         impl angzarr_diagnostic::Diagnostic for $name {
 //! #             fn code(&self) -> &str { "lamp-refused" }
-//! #             fn args(&self) -> Vec<(&'static str, angzarr_embedded_diagnostic::Arg)> { vec![] }
+//! #             fn args(&self) -> Vec<(&'static str, angzarr_diagnostic::Arg)> { vec![] }
 //! #         }
 //! #     )*};
 //! # }
@@ -1817,9 +1817,9 @@
 //! #                 f.write_str(stringify!($name))
 //! #             }
 //! #         }
-//! #         impl angzarr_embedded_diagnostic::Diagnostic for $name {
+//! #         impl angzarr_diagnostic::Diagnostic for $name {
 //! #             fn code(&self) -> &str { "lamp-refused" }
-//! #             fn args(&self) -> Vec<(&'static str, angzarr_embedded_diagnostic::Arg)> { vec![] }
+//! #             fn args(&self) -> Vec<(&'static str, angzarr_diagnostic::Arg)> { vec![] }
 //! #         }
 //! #     )*};
 //! # }
@@ -1904,9 +1904,9 @@
 //! #                 f.write_str(stringify!($name))
 //! #             }
 //! #         }
-//! #         impl angzarr_embedded_diagnostic::Diagnostic for $name {
+//! #         impl angzarr_diagnostic::Diagnostic for $name {
 //! #             fn code(&self) -> &str { "lamp-refused" }
-//! #             fn args(&self) -> Vec<(&'static str, angzarr_embedded_diagnostic::Arg)> { vec![] }
+//! #             fn args(&self) -> Vec<(&'static str, angzarr_diagnostic::Arg)> { vec![] }
 //! #         }
 //! #     )*};
 //! # }
@@ -2003,9 +2003,9 @@
 //! #                 f.write_str(stringify!($name))
 //! #             }
 //! #         }
-//! #         impl angzarr_embedded_diagnostic::Diagnostic for $name {
+//! #         impl angzarr_diagnostic::Diagnostic for $name {
 //! #             fn code(&self) -> &str { "lamp-refused" }
-//! #             fn args(&self) -> Vec<(&'static str, angzarr_embedded_diagnostic::Arg)> { vec![] }
+//! #             fn args(&self) -> Vec<(&'static str, angzarr_diagnostic::Arg)> { vec![] }
 //! #         }
 //! #     )*};
 //! # }
@@ -2104,9 +2104,9 @@
 //! #                 f.write_str(stringify!($name))
 //! #             }
 //! #         }
-//! #         impl angzarr_embedded_diagnostic::Diagnostic for $name {
+//! #         impl angzarr_diagnostic::Diagnostic for $name {
 //! #             fn code(&self) -> &str { "lamp-refused" }
-//! #             fn args(&self) -> Vec<(&'static str, angzarr_embedded_diagnostic::Arg)> { vec![] }
+//! #             fn args(&self) -> Vec<(&'static str, angzarr_diagnostic::Arg)> { vec![] }
 //! #         }
 //! #     )*};
 //! # }
@@ -2168,9 +2168,9 @@
 //! #                 f.write_str(stringify!($name))
 //! #             }
 //! #         }
-//! #         impl angzarr_embedded_diagnostic::Diagnostic for $name {
+//! #         impl angzarr_diagnostic::Diagnostic for $name {
 //! #             fn code(&self) -> &str { "lamp-refused" }
-//! #             fn args(&self) -> Vec<(&'static str, angzarr_embedded_diagnostic::Arg)> { vec![] }
+//! #             fn args(&self) -> Vec<(&'static str, angzarr_diagnostic::Arg)> { vec![] }
 //! #         }
 //! #     )*};
 //! # }
@@ -2264,9 +2264,9 @@
 //! #                 f.write_str(stringify!($name))
 //! #             }
 //! #         }
-//! #         impl angzarr_embedded_diagnostic::Diagnostic for $name {
+//! #         impl angzarr_diagnostic::Diagnostic for $name {
 //! #             fn code(&self) -> &str { "lamp-refused" }
-//! #             fn args(&self) -> Vec<(&'static str, angzarr_embedded_diagnostic::Arg)> { vec![] }
+//! #             fn args(&self) -> Vec<(&'static str, angzarr_diagnostic::Arg)> { vec![] }
 //! #         }
 //! #     )*};
 //! # }
@@ -2406,9 +2406,9 @@
 //! #                 f.write_str(stringify!($name))
 //! #             }
 //! #         }
-//! #         impl angzarr_embedded_diagnostic::Diagnostic for $name {
+//! #         impl angzarr_diagnostic::Diagnostic for $name {
 //! #             fn code(&self) -> &str { "lamp-refused" }
-//! #             fn args(&self) -> Vec<(&'static str, angzarr_embedded_diagnostic::Arg)> { vec![] }
+//! #             fn args(&self) -> Vec<(&'static str, angzarr_diagnostic::Arg)> { vec![] }
 //! #         }
 //! #     )*};
 //! # }
@@ -2548,9 +2548,9 @@
 //! #                 f.write_str(stringify!($name))
 //! #             }
 //! #         }
-//! #         impl angzarr_embedded_diagnostic::Diagnostic for $name {
+//! #         impl angzarr_diagnostic::Diagnostic for $name {
 //! #             fn code(&self) -> &str { "lamp-refused" }
-//! #             fn args(&self) -> Vec<(&'static str, angzarr_embedded_diagnostic::Arg)> { vec![] }
+//! #             fn args(&self) -> Vec<(&'static str, angzarr_diagnostic::Arg)> { vec![] }
 //! #         }
 //! #     )*};
 //! # }
@@ -2690,9 +2690,9 @@
 //! #                 f.write_str(stringify!($name))
 //! #             }
 //! #         }
-//! #         impl angzarr_embedded_diagnostic::Diagnostic for $name {
+//! #         impl angzarr_diagnostic::Diagnostic for $name {
 //! #             fn code(&self) -> &str { "lamp-refused" }
-//! #             fn args(&self) -> Vec<(&'static str, angzarr_embedded_diagnostic::Arg)> { vec![] }
+//! #             fn args(&self) -> Vec<(&'static str, angzarr_diagnostic::Arg)> { vec![] }
 //! #         }
 //! #     )*};
 //! # }

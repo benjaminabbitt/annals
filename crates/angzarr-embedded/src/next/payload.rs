@@ -15,7 +15,7 @@ use std::collections::BTreeMap;
 use prost::{Message, Name};
 use prost_types::Any;
 
-use angzarr_embedded_diagnostic::Report;
+use angzarr_diagnostic::Report;
 
 use super::error::PayloadError;
 use super::wire::WireError;

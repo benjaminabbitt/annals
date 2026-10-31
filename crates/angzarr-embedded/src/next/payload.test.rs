@@ -127,7 +127,7 @@ fn decode_as_converts_a_valid_wire_message_to_its_domain_type() {
 #[test]
 fn decode_as_refuses_a_wire_message_its_domain_type_cannot_hold() {
     use crate::next::decode_as;
-    use angzarr_embedded_diagnostic::Diagnostic;
+    use angzarr_diagnostic::Diagnostic;
     use wire_and_domain::{Stamped, StampedDomain};
 
     let error = decode_as::<Stamped, StampedDomain>(&pack(&Stamped { at: None }))

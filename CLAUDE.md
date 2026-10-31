@@ -18,13 +18,13 @@ angzarr-embedded is a deterministic application engine on CQRS/ES. Every crate h
 knows nothing about any application that uses it, so anything specific to
 one belongs in that application's repository, not here.
 
-Every crate has zero third-party dependencies, except angzarr-embedded,
-angzarr-embedded-host, angzarr-store-sqlite, angzarr-embedded-catalog-check
-and angzarr-embedded-macros. A crate may
+Every crate's dependencies are named below, each with why. A crate may
 depend on another crate in this workspace, as angzarr-embedded-catalog-check does.
 
-angzarr-embedded-catalog-check is test-only: its one dev-dependency, `fluent-syntax`
-(Apache-2.0 OR MIT), parses the Fluent catalogs for the parity test.
+angzarr-embedded-catalog-check is test-only: angzarr-diagnostic's `catalog`
+module checks the Fluent catalogs against the errors for the parity test,
+and its one third-party dev-dependency, `fluent-bundle` (Apache-2.0 OR
+MIT), renders each message with its error's args.
 Nothing depends on it and it has no library to speak of.
 
 angzarr-embedded depends on `angzarr-proto` (a git dependency pinned by rev:
@@ -37,7 +37,10 @@ angzarr-embedded also depends on `angzarr-ports`, pinned at the same rev of
 angzarr core (`crates/angzarr-ports`, moved there from angzarr-project with
 angzarr-proto): angzarr's shared store contract (one async
 trait set, its errors and codes, its conformance suite), which angzarr-embedded's
-kernel runs on and has no store traits of its own beside.
+kernel runs on and has no store traits of its own beside, and on
+`angzarr-diagnostic`, at that rev too (`crates/angzarr-diagnostic`):
+the `Diagnostic` trait every error here implements, re-exported as
+`angzarr_embedded::angzarr_diagnostic`.
 angzarr-embedded also depends on `angzarr-router`, a git dependency pinned by
 rev: angzarr's shared client router, through which the kernel dispatches
 business (routing by type, folding the state it is given, the handlers,
@@ -71,7 +74,7 @@ or a driver would be a second, unchecked implementation of the dialect. It
 is the one SQLite adapter angzarr-embedded and angzarr share, so it
 is a LEAF: it depends on nothing of angzarr-embedded (its own test,
 `a_store_depends_on_nothing_of_angzarr_embedded`, holds it to that), and its errors
-follow angzarr-ports' style rather than `angzarr_embedded_diagnostic`'s. It lives here
+are `Diagnostic`s through angzarr-ports' re-export of angzarr-diagnostic. It lives here
 for the POC, beside its first user; it can move to angzarr-project unchanged.
 
 angzarr-embedded-host depends on `angzarr-embedded` (the kernel's `Registry`,
@@ -105,28 +108,25 @@ from `[workspace.package]`. A new crate sets `license.workspace = true` and
 
 ## Errors are a key and args: a code, args, and an en-US message
 
-Every public error type implements `angzarr_embedded_diagnostic::Diagnostic`, and
+Every public error type implements `angzarr_diagnostic::Diagnostic`, and
 its `Display` is its code then its args (` name=value` each, a wrapped
 cause flattened as `name=<code>` and `name.<arg>=value`, a value that is
 empty or holds whitespace, `=`, `"` or `\` double-quoted with its `"` and
 `\` escaped), never English (angzarr decision 14.37):
-`angzarr_embedded_diagnostic::display` writes it.
+`angzarr_diagnostic::display` writes it.
 English is rendered only where an error is shown, from the Fluent catalogs
-keyed by the code: the game client renders it; angzarr-embedded renders nothing. The trait lives in its own
-crate, angzarr-embedded-diagnostic, not in angzarr-embedded, so angzarr-embedded-yaml and angzarr-embedded-graph get
-it without depending on the event-sourcing kernel.
+keyed by the code: the game client renders it; angzarr-embedded renders nothing. The trait lives in
+angzarr core's angzarr-diagnostic, not in angzarr-embedded, so angzarr's
+shared crates (angzarr-ports, angzarr-yaml) and the apps share it without
+depending on the event-sourcing kernel.
 
-Two exceptions, angzarr's: angzarr-ports' `StoreError` and
-angzarr-store-sqlite's errors have `code()`, args and a code-and-args
-`Display` in the same style without the trait (they depend on no
-angzarr-embedded crate). angzarr-embedded forwards a
-`StoreError` under its own `angzarr-ports-*` code through
-`KernelError::Store`, and carries angzarr-ports' catalog
-(`crates/angzarr-embedded/locales/en-US/angzarr-ports.ftl`, exported as
-`angzarr_embedded::ANGZARR_PORTS_EN_US`); the catalog check wraps the adapter's.
+angzarr-embedded forwards angzarr-ports' `StoreError` under its own
+`angzarr-ports-*` code through `KernelError::Store`; its messages are
+angzarr-ports' own catalog, `angzarr_ports::EN_US` (re-exported as
+`angzarr_embedded::angzarr_ports`), checked against its errors in core.
 
 - **Codes are stable and never reused.** Kebab-case, starting with the
-  crate's name (`angzarr-embedded-yaml-too-new`), and a valid Fluent message id. A code
+  crate's name (`angzarr-embedded-host-handshake-malformed`), and a valid Fluent message id. A code
   whose meaning changes gets a new code; a retired code is not given to
   anything else.
 - **Args carry data, never pre-formatted English.** Numbers, ids, paths and
@@ -140,9 +140,11 @@ angzarr-embedded crate). angzarr-embedded forwards a
   panic's) is never captured: it stays in the handler's own log.
 - **A new variant needs a code and an en-US message** in
   `crates/<crate>/locales/en-US/<crate>.ftl`, using exactly the variant's
-  args, with a Fluent selector wherever a count is shown.
+  args, with a Fluent selector wherever a count is shown. The catalog check
+  (angzarr-embedded-catalog-check, on angzarr-diagnostic's `catalog::check`)
+  holds the two to each other.
 - A game's error that an angzarr-embedded error carries (a migration step's, a content
-  decoder's) is held as an `angzarr_embedded_diagnostic::Report`, keeping the game's
+  decoder's) is held as an `angzarr_diagnostic::Report`, keeping the game's
   own code.
 - Where a game's error crosses into the engine, the trait demands it:
   `Domain::Rejection: Diagnostic`, so a domain whose rejections are not
@@ -153,9 +155,8 @@ angzarr-embedded crate). angzarr-embedded forwards a
 The workspace denies three clippy lints, and every crate opts in with
 `[lints] workspace = true`: `invisible_characters`, `unicode_not_nfc` and
 `non_ascii_literal`. A non-ASCII character in a literal is written as an
-escape (`"\u{e9}"`), so what the code holds is plain. The one allow is the
-`roundtrip` module of `crates/angzarr-embedded-yaml/src/lib.test.rs`, whose corpus is
-readable text by design; a new allow needs a comment saying why.
+escape (`"\u{e9}"`), so what the code holds is plain. There is no allow; a
+new one needs a comment saying why.
 
 ## Tests live beside the code, in `*.test.rs`
 
@@ -174,7 +175,7 @@ not put its tests in the reader's (or an LLM's) context.
 
 - Shared fixtures are `*.test.rs` files too, declared
   `#[cfg(test)] #[path = "toys.test.rs"] pub(crate) mod toys;`
-  (`angzarr_embedded::next::toys`, `angzarr_embedded_yaml::rng`).
+  (`angzarr_embedded::next::toys`).
 - A source file with several test files includes each,
   `#[cfg(test)] #[path = "edit_map.test.rs"] mod edit_map_tests;`, or keeps
   one `foo.test.rs` with a module per subject.
@@ -247,25 +248,3 @@ failing gate is a finding: fix the cause and commit again; never
    an `exclude_re` in `.cargo/mutants.toml` matching that one mutant, with a
    comment saying why: not `#[mutants::skip]`, which needs the `mutants`
    crate as a dependency, and never a lowered threshold.
-
-## Versioned documents: bump, register a step, keep an old fixture
-
-`angzarr_embedded_yaml::versioned` loads content stamped with a root `version: N` (a
-non-negative integer; a mapping with no `version` is version 0). It
-is a module of angzarr-embedded-yaml rather than its own crate because it works only on
-`angzarr_embedded_yaml::Value` and every user of it already depends on angzarr-embedded-yaml.
-
-- `Migrations::new(kind, current).step(from, fn).build()` checks the chain
-  (no gaps, no duplicates, no step at or past `current`) and returns a
-  `ChainError` rather than panicking, so a test can name what is wrong.
-- A step edits version `from` into `from + 1`; the loader stamps the new
-  version. Use the helpers (`rename_key`, `move_key`, `set_default`,
-  `remove_key`, `map_seq`). A step that fails for the game's own reason
-  returns the game's diagnostic: `MigrationError::game(&e)`, or
-  `Report::new(code).arg(..).into()`.
-- Loading is string in, tree out, and never rewrites a file.
-  `Loader::upgrade` gives the upgraded text for a tool that rewrites on
-  purpose (the written text has no comments).
-- Changing a document's schema means: bump `current`, register the step from
-  the old version, and keep a fixture at the old version with its expected
-  current-version output (`Loader::assert_fixtures`).

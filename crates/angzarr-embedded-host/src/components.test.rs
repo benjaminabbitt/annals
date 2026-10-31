@@ -15,6 +15,7 @@
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
+use angzarr_diagnostic::Diagnostic;
 use angzarr_embedded::next::angzarr_router::error::{CodedError, GrpcCode};
 use angzarr_embedded::next::angzarr_router::router::{
     CommandHandler, PolicyComponent, ProjectorHandler,
@@ -28,7 +29,6 @@ use angzarr_embedded::next::{
     Any, EventStore, Failure, Handled, Kernel, MemoryDeadLetters, OnRetryable, Registry, Sampled,
     StreamRef, Timestamp,
 };
-use angzarr_embedded_diagnostic::Diagnostic;
 use angzarr_ports::memory::MemoryStore;
 use angzarr_router::pb::CommandHandlerResponse;
 

@@ -76,7 +76,7 @@ fn a_fold_that_fails_carries_its_cause_as_a_key_and_args() {
 /// one keyed ROUTER_REASON_COMMAND_REFUSED with its object beside.
 #[test]
 fn a_refusal_goes_out_and_reads_back_under_each_business_status() {
-    use angzarr_embedded_diagnostic::{Diagnostic, Report};
+    use angzarr_diagnostic::{Diagnostic, Report};
     use angzarr_router::error::{BusinessStatus, GrpcCode, HandlerError};
 
     use super::{refused, Rejected};
@@ -160,7 +160,7 @@ fn an_untyped_refusal_reaches_on_refused_under_the_key_it_went_out_under() {
 /// immediate return as ABORTED under the report's own code and args.
 #[test]
 fn a_retryable_bug_and_an_immediate_return_go_out_under_their_status() {
-    use angzarr_embedded_diagnostic::Report;
+    use angzarr_diagnostic::Report;
     use angzarr_router::error::{GrpcCode, HandlerError, RetryableStatus};
 
     use super::failed;
@@ -264,7 +264,7 @@ mod counted {
 /// nothing behind.
 #[test]
 fn a_stream_of_distinct_child_codes_leaks_nothing() {
-    use angzarr_embedded_diagnostic::Diagnostic;
+    use angzarr_diagnostic::Diagnostic;
     use angzarr_router::error::{BusinessStatus, CodedError};
 
     let answered = |n: usize| {
@@ -285,9 +285,7 @@ fn a_stream_of_distinct_child_codes_leaks_nothing() {
         );
         let routed = crate::next::KernelError::Router(bug.clone());
         let routed = (routed.to_string(), routed.code().len(), routed.args().len());
-        let failure = super::policy_failed(&angzarr_embedded_diagnostic::Report::new(
-            "toy-policy-broke",
-        ));
+        let failure = super::policy_failed(&angzarr_diagnostic::Report::new("toy-policy-broke"));
         drop((shown, routed, failure));
         let failed = super::internal(
             super::POLICY_FAILED,

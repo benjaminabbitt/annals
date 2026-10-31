@@ -74,7 +74,7 @@ use super::wire::WireError;
 
 /// The error a generated `State::from_snapshot` returns, re-exported so
 /// the expansion needs no dependency of its user's.
-pub use angzarr_embedded_diagnostic::Report;
+pub use angzarr_diagnostic::Report;
 
 /// angzarr-router's context of the input a handler decides, and its
 /// conflict under AGGREGATE_HANDLES: a [`Context`]'s `command`.
@@ -520,9 +520,7 @@ const COMMAND_REFUSED: &str = "angzarr-embedded-next-command-refused";
 
 impl TypedRefusal {
     /// `object`, packed.
-    pub fn of<T: DomainMessage + angzarr_embedded_diagnostic::Diagnostic>(
-        object: &T,
-    ) -> TypedRefusal {
+    pub fn of<T: DomainMessage + angzarr_diagnostic::Diagnostic>(object: &T) -> TypedRefusal {
         TypedRefusal {
             object: pack_message(object),
         }
@@ -563,7 +561,7 @@ impl<R> From<R> for Rejection<R> {
     }
 }
 
-impl<R: angzarr_embedded_diagnostic::Diagnostic> Rejection<R> {
+impl<R: angzarr_diagnostic::Diagnostic> Rejection<R> {
     /// As a refused policy receives it, the oneof: the typed object
     /// packed, or a message-only refusal's code and args.
     pub fn response(&self) -> v1::RefusalResponse {
@@ -590,15 +588,13 @@ impl<R> Rejection<R> {
     }
 }
 
-impl<R: angzarr_embedded_diagnostic::Diagnostic> fmt::Display for Rejection<R> {
+impl<R: angzarr_diagnostic::Diagnostic> fmt::Display for Rejection<R> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        angzarr_embedded_diagnostic::display(self, f)
+        angzarr_diagnostic::display(self, f)
     }
 }
 
-impl<R: angzarr_embedded_diagnostic::Diagnostic> angzarr_embedded_diagnostic::Diagnostic
-    for Rejection<R>
-{
+impl<R: angzarr_diagnostic::Diagnostic> angzarr_diagnostic::Diagnostic for Rejection<R> {
     fn code(&self) -> &str {
         match self {
             Rejection::Message(rejection) => rejection.code(),
@@ -606,7 +602,7 @@ impl<R: angzarr_embedded_diagnostic::Diagnostic> angzarr_embedded_diagnostic::Di
         }
     }
 
-    fn args(&self) -> Vec<(&str, angzarr_embedded_diagnostic::Arg)> {
+    fn args(&self) -> Vec<(&str, angzarr_diagnostic::Arg)> {
         match self {
             Rejection::Message(rejection) => rejection.args(),
             Rejection::Typed(typed) => vec![("refusal_type", typed.refusal_type().into())],
@@ -687,7 +683,7 @@ impl<X> Failed<X> {
     }
 
     /// A bug, keyed by `bug`'s code, with its args.
-    pub fn bug(bug: &dyn angzarr_embedded_diagnostic::Diagnostic) -> Failed<X> {
+    pub fn bug(bug: &dyn angzarr_diagnostic::Diagnostic) -> Failed<X> {
         Failed::Bug(Report::of(bug))
     }
 
@@ -695,7 +691,7 @@ impl<X> Failed<X> {
     /// args.
     pub fn retryable_bug(
         status: RetryableStatus,
-        bug: &dyn angzarr_embedded_diagnostic::Diagnostic,
+        bug: &dyn angzarr_diagnostic::Diagnostic,
     ) -> Failed<X> {
         Failed::RetryableBug {
             status,
@@ -704,7 +700,7 @@ impl<X> Failed<X> {
     }
 
     /// An immediate return (ABORTED), keyed by `why`'s code, with its args.
-    pub fn immediate(why: &dyn angzarr_embedded_diagnostic::Diagnostic) -> Failed<X> {
+    pub fn immediate(why: &dyn angzarr_diagnostic::Diagnostic) -> Failed<X> {
         Failed::Immediate(Report::of(why))
     }
 
@@ -744,17 +740,13 @@ impl<X> From<X> for Failed<X> {
 
 /// The refusal's code and args, or the report's (decision 14.37): never
 /// English.
-impl<X: angzarr_embedded_diagnostic::Diagnostic> fmt::Display for Failed<X> {
+impl<X: angzarr_diagnostic::Diagnostic> fmt::Display for Failed<X> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Failed::Rejected { rejection, .. } => {
-                angzarr_embedded_diagnostic::display(rejection, f)
-            }
+            Failed::Rejected { rejection, .. } => angzarr_diagnostic::display(rejection, f),
             Failed::Immediate(report)
             | Failed::Bug(report)
-            | Failed::RetryableBug { report, .. } => {
-                angzarr_embedded_diagnostic::display(report, f)
-            }
+            | Failed::RetryableBug { report, .. } => angzarr_diagnostic::display(report, f),
         }
     }
 }
@@ -893,7 +885,7 @@ impl<C> Refusal<C> {
 pub use super::policy::{CommandTarget, EventSource, Policy};
 
 /// What a policy's `#[on_event(E)]` handler returns as its `Ok` (its `Err`
-/// is any [`Diagnostic`](angzarr_embedded_diagnostic::Diagnostic): a bug,
+/// is any [`Diagnostic`](angzarr_diagnostic::Diagnostic): a bug,
 /// dead-lettered as
 /// [`StepError::PolicyFailed`](super::StepError::PolicyFailed)): commands for its target
 /// `T` ([`CommandTarget`]: a domain here, or a remote one's command set),
@@ -1344,7 +1336,7 @@ pub fn run_command<A, R, C, O, E>(
 ) -> Result<Option<EventBook>, angzarr_router::error::HandlerError>
 where
     A: Domain<State = A, Rejection = Rejection<R>> + Clone,
-    R: angzarr_embedded_diagnostic::Diagnostic,
+    R: angzarr_diagnostic::Diagnostic,
     C: DomainMessage,
     O: Emits<A>,
     E: Fails<A>,
@@ -1429,7 +1421,7 @@ where
     A: Domain<State = A> + Clone,
     C: DomainMessage,
     Rr: Records<A>,
-    E: angzarr_embedded_diagnostic::Diagnostic,
+    E: angzarr_diagnostic::Diagnostic,
 {
     let ctx = context_of(cctx);
     let book = refused.command.clone().unwrap_or_default();
@@ -1524,11 +1516,7 @@ pub fn decode_refusal<C: DomainMessage>(
 /// one the policy's source `S` ingests ([`Ingests`]), packed; or its
 /// error as a [`Report`], whose code and args are the dead letter's
 /// `cause`.
-pub fn translated_fact<
-    S: Ingests<F>,
-    F: DomainMessage,
-    E: angzarr_embedded_diagnostic::Diagnostic,
->(
+pub fn translated_fact<S: Ingests<F>, F: DomainMessage, E: angzarr_diagnostic::Diagnostic>(
     answer: Result<F, E>,
 ) -> Result<Any, Report> {
     answer
@@ -1540,7 +1528,7 @@ pub fn translated_fact<
 /// [`Policy::on_event`] returns it: its commands
 /// for the target `T`, as handled (`Some`); or its error as a [`Report`],
 /// whose code and args are the dead letter's `cause`.
-pub fn policy_answer<T: CommandTarget, E: angzarr_embedded_diagnostic::Diagnostic>(
+pub fn policy_answer<T: CommandTarget, E: angzarr_diagnostic::Diagnostic>(
     answer: Result<Commands<T>, E>,
 ) -> Result<Option<Commands<T>>, Report> {
     answer.map(Some).map_err(|error| Report::of(&error))

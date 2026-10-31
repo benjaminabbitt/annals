@@ -177,7 +177,7 @@ fn a_state_descriptor_without_the_implicit_base_is_refused() {
             self.clone()
         }
 
-        fn from_snapshot(snapshot: Self) -> Result<Self, angzarr_embedded_diagnostic::Report> {
+        fn from_snapshot(snapshot: Self) -> Result<Self, angzarr_diagnostic::Report> {
             Ok(snapshot)
         }
 
@@ -241,7 +241,7 @@ fn a_state_descriptor_naming_another_type_than_its_snapshot_is_refused() {
             Snap {}
         }
 
-        fn from_snapshot(_: Snap) -> Result<Self, angzarr_embedded_diagnostic::Report> {
+        fn from_snapshot(_: Snap) -> Result<Self, angzarr_diagnostic::Report> {
             Ok(Misnamed)
         }
 

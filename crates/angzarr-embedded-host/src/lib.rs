@@ -70,7 +70,7 @@ pub const EN_US: (&str, &str) = (
 
 /// One value of every error this crate defines, each variant once, for the
 /// catalog parity test.
-pub fn diagnostic_samples() -> Vec<Box<dyn angzarr_embedded_diagnostic::Diagnostic>> {
+pub fn diagnostic_samples() -> Vec<Box<dyn angzarr_diagnostic::Diagnostic>> {
     let mut samples = error::diagnostic_samples();
     samples.extend(descriptor::diagnostic_samples());
     samples.extend(exposure::diagnostic_samples());

@@ -4,7 +4,8 @@ A small, deterministic event-sourcing engine on angzarr's wire types:
 angzarr's **in-app runtime**, run inside your application's process (embedded
 in your application, not on a microcontroller). For the distributed system,
 see angzarr core, <https://github.com/angzarr-io/angzarr>. No clock and nothing specific to any application.
-Its dependencies are angzarr-embedded-diagnostic (for its errors) and angzarr's wire
+Its dependencies are angzarr core's angzarr-diagnostic (for its errors, re-exported
+as `angzarr_embedded::angzarr_diagnostic`) and angzarr's wire
 types (angzarr-proto, with prost and prost-types), which the kernel,
 `angzarr_embedded::next`, operates on directly; angzarr-proto is a git dependency
 whose build runs `protoc`.

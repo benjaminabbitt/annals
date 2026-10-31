@@ -29,7 +29,7 @@
 //! refuse a chain that cannot finish (a duplicate source, rules out of
 //! order, a dead end) before anything is read.
 
-use angzarr_embedded_diagnostic::Report;
+use angzarr_diagnostic::Report;
 use angzarr_proto::v1::{EventPage, UpcastRequest, UpcastResponse};
 use angzarr_router::send::BoxFuture;
 use prost::{Message, Name};

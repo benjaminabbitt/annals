@@ -1,7 +1,7 @@
 //! What the kernel knows of a domain's types: its state and how its events
 //! fold into it.
 
-use angzarr_embedded_diagnostic::Diagnostic;
+use angzarr_diagnostic::Diagnostic;
 use angzarr_proto::v1::{ConflictResolution, StateDescriptor};
 
 use super::conflict::Units;
@@ -26,18 +26,14 @@ pub trait State: Default + Clone + Send + 'static {
     /// not be a valid state (a required field absent, an enum value the
     /// domain does not define, a broken invariant). A refusal makes the
     /// snapshot unreadable ([`PayloadError::Invalid`](super::PayloadError)).
-    fn from_snapshot(snapshot: Self::Snapshot)
-        -> Result<Self, angzarr_embedded_diagnostic::Report>;
+    fn from_snapshot(snapshot: Self::Snapshot) -> Result<Self, angzarr_diagnostic::Report>;
 
     /// Overwrite this instance's state with what `snapshot` holds, keeping
     /// whatever the snapshot does not (a marked-up aggregate's immutable
     /// configuration, from the registry's factory). Resuming builds a fresh
     /// instance, then restores it. The default replaces the whole instance
     /// with [`State::from_snapshot`]'s.
-    fn restore(
-        &mut self,
-        snapshot: Self::Snapshot,
-    ) -> Result<(), angzarr_embedded_diagnostic::Report> {
+    fn restore(&mut self, snapshot: Self::Snapshot) -> Result<(), angzarr_diagnostic::Report> {
         *self = Self::from_snapshot(snapshot)?;
         Ok(())
     }

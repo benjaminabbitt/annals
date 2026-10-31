@@ -10,7 +10,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use angzarr_embedded_diagnostic::{Arg, Diagnostic, Report};
+use angzarr_diagnostic::{Arg, Diagnostic, Report};
 use angzarr_store_sqlite::SqliteStore;
 
 use crate::next::toys::{

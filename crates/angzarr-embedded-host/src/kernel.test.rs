@@ -3,6 +3,7 @@
 //! written to the store; and a policy step from an in-process domain into
 //! the remote one.
 
+use angzarr_diagnostic::{Arg, Diagnostic};
 use angzarr_embedded::next::angzarr_router::error::CodedError;
 use angzarr_embedded::next::angzarr_router::policy::PolicyDispatch;
 use angzarr_embedded::next::angzarr_router::router::CommandHandler;
@@ -15,7 +16,6 @@ use angzarr_embedded::next::{
     Any, EventStore, Failure, Handled, Kernel, KernelError, MemoryDeadLetters, Misconfigured,
     Recovery, Registry, Sampled, StreamRef, Timestamp, DEAD_LETTER_PREFIX,
 };
-use angzarr_embedded_diagnostic::{Arg, Diagnostic};
 use angzarr_ports::memory::MemoryStore;
 use angzarr_router::pb::CommandHandlerResponse;
 

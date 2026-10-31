@@ -116,7 +116,7 @@ fn a_rejected_policy_step_keeps_the_commands_commit_and_is_dead_lettered() {
         }]
     );
     assert!(
-        matches!(error, StepError::Rejected(r) if angzarr_embedded_diagnostic::Diagnostic::code(r) == "toy-ledger-too-large")
+        matches!(error, StepError::Rejected(r) if angzarr_diagnostic::Diagnostic::code(r) == "toy-ledger-too-large")
     );
     assert_eq!(failure.recovery(), Recovery::Business);
     assert_eq!(
@@ -529,7 +529,7 @@ fn a_policys_error_dead_letters_its_step_and_moves_its_position_past_it() {
         panic!("the policy's error, its own kind: {error:?}");
     };
     assert_eq!(
-        angzarr_embedded_diagnostic::Diagnostic::code(report),
+        angzarr_diagnostic::Diagnostic::code(report),
         "toy-unlucky-deposit"
     );
     assert_eq!(
@@ -1439,7 +1439,7 @@ fn a_policys_refusal_answer_error_dead_letters_as_policy_failed() {
         panic!("the policy's failure: {error:?}");
     };
     assert_eq!(
-        angzarr_embedded_diagnostic::Diagnostic::code(report),
+        angzarr_diagnostic::Diagnostic::code(report),
         "toy-unanswerable-refusal"
     );
     assert_eq!(failure.recovery(), Recovery::Bug);

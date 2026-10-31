@@ -35,7 +35,7 @@
 
 use std::sync::Arc;
 
-use angzarr_embedded_diagnostic::Report;
+use angzarr_diagnostic::Report;
 use angzarr_proto::v1::angzarr_dead_letter::Payload as Letter;
 use angzarr_proto::v1::{
     command_page, Command, CommandBook, CommandPage, Cover, EventBook, EventPage, EventRef,

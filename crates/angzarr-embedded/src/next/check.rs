@@ -24,7 +24,7 @@
 
 use std::fmt;
 
-use angzarr_embedded_diagnostic::{Arg, Diagnostic};
+use angzarr_diagnostic::{Arg, Diagnostic};
 use angzarr_proto::ids::{self, UuidError};
 use angzarr_proto::v1::{
     command_page, event_meta, CommandBook, CommandPage, ConflictResolution, Cover, EventMeta,
@@ -109,7 +109,7 @@ pub enum Malformed {
 
 impl fmt::Display for Malformed {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        angzarr_embedded_diagnostic::display(self, f)
+        angzarr_diagnostic::display(self, f)
     }
 }
 

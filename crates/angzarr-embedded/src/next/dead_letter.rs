@@ -66,7 +66,7 @@
 
 use std::sync::Mutex;
 
-use angzarr_embedded_diagnostic::Diagnostic;
+use angzarr_diagnostic::Diagnostic;
 use angzarr_proto::v1::angzarr_dead_letter::{Payload, RejectionDetails};
 use angzarr_proto::v1::{
     command_page, AngzarrDeadLetter, CommandRefusedDetails, ComponentKind, ProcessingFailedDetails,
@@ -101,7 +101,7 @@ pub trait DeadLetterLog: Send + Sync {
 /// A dead letter as one line, keys and values only: [`DEAD_LETTER_PREFIX`],
 /// the component that produced it, the reason's code and its args as
 /// `name=value` in name order (a value quoted where it would not parse
-/// back, `angzarr_embedded_diagnostic::quote`), then any metadata, a retried step's
+/// back, `angzarr_diagnostic::quote`), then any metadata, a retried step's
 /// `retry_count`, and the command's `command_id` and `stream`, or the
 /// event's `sequence` and `stream` (the failed events', or an edition
 /// removal's `EditionDeleted`), as the letter holds. Built from
@@ -147,10 +147,7 @@ pub fn dead_letter_line(letter: &AngzarrDeadLetter) -> String {
     for (name, value) in fields {
         // The payload's stream, where the reason names it already, once.
         if named.insert(name.clone()) {
-            line.push_str(&format!(
-                " {name}={}",
-                angzarr_embedded_diagnostic::quote(&value)
-            ));
+            line.push_str(&format!(" {name}={}", angzarr_diagnostic::quote(&value)));
         }
     }
     line

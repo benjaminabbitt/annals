@@ -24,7 +24,7 @@ use angzarr_router::router::{
     self as router, DynCommandHandler, DynPolicyComponent, DynProjectorHandler,
 };
 
-use angzarr_embedded_diagnostic::{Arg, Diagnostic};
+use angzarr_diagnostic::{Arg, Diagnostic};
 
 use super::coordinator::Contextual;
 use super::domain::{Domain, State};
@@ -303,7 +303,7 @@ pub enum Misconfigured {
 
 impl fmt::Display for Misconfigured {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        angzarr_embedded_diagnostic::display(self, f)
+        angzarr_diagnostic::display(self, f)
     }
 }
 

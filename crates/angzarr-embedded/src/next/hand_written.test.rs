@@ -43,7 +43,7 @@ use ::angzarr_embedded::next::{
     MemoryDeadLetters, OnRetryable, Payload, PayloadError, Registry, Sampled, State, Timestamp,
     WireError,
 };
-use angzarr_embedded_diagnostic::{Arg, Diagnostic, Report};
+use angzarr_diagnostic::{Arg, Diagnostic, Report};
 
 // ---------------------------------------------------------------- the wire
 
@@ -154,7 +154,7 @@ impl DomainMessage for TooBig {
 
 impl fmt::Display for TooBig {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        angzarr_embedded_diagnostic::display(self, f)
+        angzarr_diagnostic::display(self, f)
     }
 }
 
@@ -320,7 +320,7 @@ pub enum Refused {
 
 impl fmt::Display for Refused {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        angzarr_embedded_diagnostic::display(self, f)
+        angzarr_diagnostic::display(self, f)
     }
 }
 

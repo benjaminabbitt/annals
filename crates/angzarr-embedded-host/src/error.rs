@@ -1,5 +1,5 @@
 //! The host's errors: why a remote component could not be started. Each is a
-//! code and its args (`angzarr_embedded_diagnostic::Diagnostic`), and its
+//! code and its args (`angzarr_diagnostic::Diagnostic`), and its
 //! `Display` is those, never English. A failure once a domain is running is not
 //! one of these: it is the router's [`CodedError`], from
 //! [`RemoteCommandHandler`]'s dispatch.
@@ -9,7 +9,7 @@
 
 use std::fmt;
 
-use angzarr_embedded_diagnostic::{Arg, Diagnostic, Report};
+use angzarr_diagnostic::{Arg, Diagnostic, Report};
 
 /// What was wrong with a child's handshake: the one stdout line,
 /// `angzarr-handshake v1 unix:<absolute-socket-path>`, it prints once it is
@@ -32,7 +32,7 @@ pub enum HandshakeError {
 
 impl fmt::Display for HandshakeError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        angzarr_embedded_diagnostic::display(self, f)
+        angzarr_diagnostic::display(self, f)
     }
 }
 
@@ -164,7 +164,7 @@ pub enum HostError {
 
 impl fmt::Display for HostError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        angzarr_embedded_diagnostic::display(self, f)
+        angzarr_diagnostic::display(self, f)
     }
 }
 

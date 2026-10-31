@@ -465,7 +465,7 @@ fn an_unavailable_handlers_letter_names_its_domain_and_cause() {
 #[test]
 fn a_retryable_store_or_sidecar_failures_letter_is_keyed_as_the_spec_spells_it() {
     use crate::next::toys::{processing_failed, wire};
-    use angzarr_embedded_diagnostic::Report;
+    use angzarr_diagnostic::Report;
     let store = KernelError::Store(crate::next::StoreError::Unavailable(
         angzarr_ports::Cause::new(
             "angzarr-store-sqlite-unavailable",

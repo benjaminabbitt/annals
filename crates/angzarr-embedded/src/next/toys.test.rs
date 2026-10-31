@@ -31,7 +31,7 @@ use crate::next::{
     Sampled, State, Timestamp, UnitPath, Units, Upcaster,
 };
 use crate::next::{EventStore, ListStreams, PositionKey, PositionStore, Store, StreamRef};
-use angzarr_embedded_diagnostic::{Arg, Diagnostic, Report};
+use angzarr_diagnostic::{Arg, Diagnostic, Report};
 
 /// A message under `package`, with its `prost::Name`.
 macro_rules! named {

@@ -167,7 +167,7 @@ fn the_limits_and_an_unreachable_handler_are_coded_under_their_keys() {
 fn the_retryable_store_and_sidecar_failures_are_coded_under_their_keys() {
     use std::collections::BTreeMap;
 
-    use angzarr_embedded_diagnostic::Report;
+    use angzarr_diagnostic::Report;
     use angzarr_router::error::GrpcCode;
 
     use super::super::reasons::CoordinatorReason;

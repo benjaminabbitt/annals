@@ -16,7 +16,7 @@ import 'gates/gates.just'
 # hand-written library code whose behaviour its tests reach in-process
 # (angzarr-store-sqlite's SQLite included), so every crate is held to the
 # same bar.
-mutation_thresholds := "crates/angzarr-embedded=90 crates/angzarr-embedded-catalog-check=90 crates/angzarr-embedded-diagnostic=90 crates/angzarr-embedded-graph=90 crates/angzarr-embedded-host=90 crates/angzarr-embedded-macros=90 crates/angzarr-embedded-yaml=90 crates/angzarr-store-sqlite=90"
+mutation_thresholds := "crates/angzarr-embedded=90 crates/angzarr-embedded-catalog-check=90 crates/angzarr-embedded-host=90 crates/angzarr-embedded-macros=90 crates/angzarr-store-sqlite=90"
 
 # Staged paths outside any crate that test the whole workspace.
 workspace_wide := "Cargo.toml Cargo.lock rust-toolchain.toml .cargo/config.toml .cargo/config"

@@ -177,8 +177,8 @@ pub fn not_before(floor: Option<&Timestamp>, now: Timestamp) -> Timestamp {
 
 /// One value of every error `next` defines, each code once, for the
 /// catalog parity test ([`crate::diagnostic_samples`]).
-pub(crate) fn diagnostic_samples() -> Vec<Box<dyn angzarr_embedded_diagnostic::Diagnostic>> {
-    use angzarr_embedded_diagnostic::Report;
+pub(crate) fn diagnostic_samples() -> Vec<Box<dyn angzarr_diagnostic::Diagnostic>> {
+    use angzarr_diagnostic::Report;
     use angzarr_ports::Cause;
     use v1::ConflictResolution;
 
@@ -421,7 +421,7 @@ pub(crate) fn diagnostic_samples() -> Vec<Box<dyn angzarr_embedded_diagnostic::D
         },
     ];
 
-    let mut samples: Vec<Box<dyn angzarr_embedded_diagnostic::Diagnostic>> = Vec::new();
+    let mut samples: Vec<Box<dyn angzarr_diagnostic::Diagnostic>> = Vec::new();
     samples.extend(malformed.map(|e| Box::new(e) as Box<_>));
     samples.extend(kernel.map(|e| Box::new(e) as Box<_>));
     samples.extend(replay.map(|e| Box::new(e) as Box<_>));

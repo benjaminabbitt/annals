@@ -905,7 +905,7 @@ stream, by sequence. SQLite's migration 0004 drops the released 0002's
 
 **Errors** are angzarr-ports' `StoreError`, codes `angzarr-ports-*`: the
 kernel forwards each as `KernelError::Store` with its code and args, and
-angzarr-embedded carries the catalog for them (`locales/en-US/angzarr-ports.ftl`).
+their messages are angzarr-ports' own catalog (`angzarr_ports::EN_US`).
 A store's own failure is a `Cause` (its code and args) inside
 `Unavailable` or `Unreadable`; a driver's error carries its text verbatim
 as `ext_err_txt` and SQLite's primary result code as `errno`.

@@ -630,7 +630,7 @@ fn described(kind: pb::ComponentKind) -> pb::ComponentDescriptor {
 /// naming the component, under COORDINATOR_REASON_POLICY_NO_OUTPUT_DOMAIN.
 #[test]
 fn a_policy_descriptor_without_an_output_domain_is_refused() {
-    use angzarr_embedded_diagnostic::Diagnostic;
+    use angzarr_diagnostic::Diagnostic;
     let mut descriptor = described(pb::ComponentKind::Policy);
     assert_eq!(crate::validate(&descriptor), Ok(()));
     descriptor.output_domain = String::new();
@@ -886,7 +886,7 @@ fn a_child_described_again_is_refused_unless_the_registry_takes_it() {
     };
     let refused = order.registered_by(&unversioned, false);
     assert!(
-        matches!(&refused, Err(HostError::Register { cause }) if angzarr_embedded_diagnostic::Diagnostic::code(cause) == "angzarr-embedded-next-misconfigured-empty-rules-version"),
+        matches!(&refused, Err(HostError::Register { cause }) if angzarr_diagnostic::Diagnostic::code(cause) == "angzarr-embedded-next-misconfigured-empty-rules-version"),
         "{refused:?}"
     );
     assert_eq!(order.link.registered().descriptor, first, "the old kept");

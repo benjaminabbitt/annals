@@ -1,7 +1,7 @@
 //! A stream: an append-only log of stamped events and the state folded from
 //! it.
 
-use angzarr_embedded_diagnostic::Report;
+use angzarr_diagnostic::Report;
 use angzarr_proto::v1::event_meta::Causation;
 use angzarr_proto::v1::{CommandBook, Cover, EventMeta, EventPage, FactOrigin, Snapshot, Uuid};
 use prost::{Message, Name};

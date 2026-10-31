@@ -56,7 +56,7 @@ mod empty {
             self.clone()
         }
 
-        fn from_snapshot(snapshot: Self) -> Result<Self, angzarr_embedded_diagnostic::Report> {
+        fn from_snapshot(snapshot: Self) -> Result<Self, angzarr_diagnostic::Report> {
             Ok(snapshot)
         }
 

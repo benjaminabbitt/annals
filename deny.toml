@@ -39,8 +39,7 @@ confidence-threshold = 0.9
 # so a build that links any crate carrying them is subject to the AGPL.
 # In normal builds those crates are:
 #   `angzarr-embedded`, `angzarr-embedded-host`, `angzarr-store-sqlite`
-# and the rest (angzarr-embedded-diagnostic, angzarr-embedded-graph, angzarr-embedded-yaml,
-# angzarr-embedded-catalog-check) are Apache-2.0 OR BSD-3-Clause only (README, *Licence*;
+# and the rest (angzarr-embedded-catalog-check) are Apache-2.0 OR BSD-3-Clause only (README, *Licence*;
 # `just licence-check` holds both to `cargo tree`). Accepted with the
 # dependency; any other copyleft crate fails here.
 exceptions = [
@@ -67,8 +66,9 @@ unknown-registry = "deny"
 unknown-git = "deny"
 allow-registry = ["https://github.com/rust-lang/crates.io-index"]
 allow-git = [
-  # angzarr's wire contract (angzarr-proto) and store contract
-  # (angzarr-ports): angzarr core's shared crates, pinned by one rev.
+  # angzarr's wire contract (angzarr-proto), store contract
+  # (angzarr-ports) and localizable errors (angzarr-diagnostic): angzarr
+  # core's shared crates, pinned by one rev.
   "https://github.com/angzarr-io/angzarr",
   # angzarr's shared client router (BSD-3-Clause), which the kernel calls
   # for business dispatch, pinned by rev.

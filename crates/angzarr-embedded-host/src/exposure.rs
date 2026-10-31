@@ -14,7 +14,7 @@
 
 use std::fmt;
 
-use angzarr_embedded_diagnostic::{Arg, Diagnostic};
+use angzarr_diagnostic::{Arg, Diagnostic};
 
 use crate::config::Expose;
 
@@ -59,7 +59,7 @@ pub struct NotExposed {
 
 impl fmt::Display for NotExposed {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        angzarr_embedded_diagnostic::display(self, f)
+        angzarr_diagnostic::display(self, f)
     }
 }
 

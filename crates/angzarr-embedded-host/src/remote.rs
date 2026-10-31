@@ -43,9 +43,9 @@ use crate::rpc::google_rpc::{ErrorInfo, Status as RpcStatus, ERROR_INFO_NAME};
 use crate::rpc::policy::policy_service_client::PolicyServiceClient;
 use crate::rpc::projector::projector_service_client::ProjectorServiceClient;
 use crate::rpc::upcaster::upcaster_service_client::UpcasterServiceClient;
+use angzarr_diagnostic::Report;
 use angzarr_embedded::next::reasons::args;
 use angzarr_embedded::next::{Description, KernelError, UpcastError, UpcastPort};
-use angzarr_embedded_diagnostic::Report;
 
 /// The router-style codes a remote handler's dispatch adds to the router's
 /// own (`angzarr_router::error::codes`).

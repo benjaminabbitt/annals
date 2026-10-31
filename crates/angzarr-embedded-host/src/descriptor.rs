@@ -9,8 +9,8 @@
 
 use std::fmt;
 
+use angzarr_diagnostic::{Arg, Diagnostic};
 use angzarr_embedded::next::reasons::CoordinatorReason;
-use angzarr_embedded_diagnostic::{Arg, Diagnostic};
 use angzarr_router::pb::{ComponentDescriptor, ComponentKind};
 
 /// Why a descriptor is refused: one variant per reason key, each naming
@@ -123,7 +123,7 @@ pub fn validate(descriptor: &ComponentDescriptor) -> Result<(), DescriptorRefuse
 
 impl fmt::Display for DescriptorRefused {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        angzarr_embedded_diagnostic::display(self, f)
+        angzarr_diagnostic::display(self, f)
     }
 }
 

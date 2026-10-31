@@ -11,18 +11,16 @@ rust-version = "1.89"
 # No library to speak of and no dependencies: the check is src/lib.test.rs.
 [dependencies]
 
-# fluent-syntax (Apache-2.0 OR MIT) parses the catalogs. Test-only: nothing
-# in angzarr-embedded renders Fluent; the game client does.
+# angzarr-diagnostic's `catalog` checks the catalogs against the samples.
+# Test-only: nothing in angzarr-embedded renders Fluent; the client does.
 [dev-dependencies]
 angzarr-embedded = { path = "../angzarr-embedded" }
-angzarr-embedded-diagnostic = { path = "../angzarr-embedded-diagnostic" }
-angzarr-embedded-graph = { path = "../angzarr-embedded-graph" }
+angzarr-diagnostic = { git = "https://github.com/angzarr-io/angzarr", rev = "d704afc21812225e7c536ef4055bf48a3ef821e9" }
 angzarr-embedded-host = { path = "../angzarr-embedded-host" }
 angzarr-store-sqlite = { path = "../angzarr-store-sqlite" }
-# angzarr-ports' Arg, to read the adapter's errors, which are in its style.
-angzarr-ports = { git = "https://github.com/angzarr-io/angzarr", rev = "dd0e55368d8f88ea24d3278fa135b2658c7cb26c" }
-angzarr-embedded-yaml = { path = "../angzarr-embedded-yaml" }
-fluent-syntax = "0.12"
+# angzarr-ports' own en-US catalog, which renders the store errors
+# angzarr-embedded forwards.
+angzarr-ports = { git = "https://github.com/angzarr-io/angzarr", rev = "d704afc21812225e7c536ef4055bf48a3ef821e9" }
 # fluent-bundle (Apache-2.0 OR MIT) renders each sample's message with its
 # args, so a message naming an arg its error may not give fails here, not in
 # the client.

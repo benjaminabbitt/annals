@@ -15,7 +15,7 @@
 
 use std::fmt;
 
-use angzarr_embedded_diagnostic::{Arg, Diagnostic, Report};
+use angzarr_diagnostic::{Arg, Diagnostic, Report};
 use angzarr_ports::StoreError;
 use angzarr_proto::v1::{Cover, EventBook, EventRef, Uuid};
 
@@ -600,7 +600,7 @@ fn stream(cover: &Cover) -> Arg {
 
 impl<R: Diagnostic> fmt::Display for Failure<R> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        angzarr_embedded_diagnostic::display(self, f)
+        angzarr_diagnostic::display(self, f)
     }
 }
 
@@ -635,7 +635,7 @@ impl<R: Diagnostic> Diagnostic for Failure<R> {
 
 impl fmt::Display for StepError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        angzarr_embedded_diagnostic::display(self, f)
+        angzarr_diagnostic::display(self, f)
     }
 }
 
@@ -659,7 +659,7 @@ impl Diagnostic for StepError {
 
 impl fmt::Display for KernelError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        angzarr_embedded_diagnostic::display(self, f)
+        angzarr_diagnostic::display(self, f)
     }
 }
 
@@ -878,7 +878,7 @@ fn router_diagnostic(error: &angzarr_router::error::CodedError) -> (&str, Vec<(&
 
 impl fmt::Display for ReplayError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        angzarr_embedded_diagnostic::display(self, f)
+        angzarr_diagnostic::display(self, f)
     }
 }
 
@@ -924,30 +924,15 @@ pub(crate) fn store_recovery(error: &StoreError) -> Recovery {
 }
 
 /// A store error's args as angzarr-embedded's diagnostics carry them: angzarr-ports'
-/// args by name, unchanged (`StoreError::args`), a `Uint` as a `Uint`, a
-/// `Str` as a `Str`, and a wrapped `Cause` (the adapter's own code and
-/// args) as a nested report under that code.
+/// args by name, unchanged (`StoreError::args`), each converted by
+/// angzarr-ports' own `From` (a `Uint` as a `Uint`, a `Str` as a `Str`, and
+/// a wrapped `Cause`, the adapter's own code and args, as a nested
+/// diagnostic under that code).
 pub(crate) fn store_args(error: &StoreError) -> Vec<(&'static str, Arg)> {
-    ported_args(error.args())
-}
-
-/// angzarr-ports' args as angzarr-embedded's.
-fn ported_args(args: Vec<(&'static str, angzarr_ports::Arg)>) -> Vec<(&'static str, Arg)> {
-    args.into_iter()
-        .map(|(name, arg)| {
-            let arg = match arg {
-                angzarr_ports::Arg::Uint(n) => Arg::Uint(n),
-                angzarr_ports::Arg::Str(s) => Arg::Str(s),
-                angzarr_ports::Arg::Cause(cause) => Arg::Nested(Box::new(
-                    ported_args(cause.args)
-                        .into_iter()
-                        .fold(Report::new(cause.code), |report, (name, arg)| {
-                            report.arg(name, arg)
-                        }),
-                )),
-            };
-            (name, arg)
-        })
+    error
+        .args()
+        .into_iter()
+        .map(|(name, arg)| (name, arg.into()))
         .collect()
 }
 
@@ -967,7 +952,7 @@ pub(crate) fn unreadable(stream: &Cover, sequence: u64, reason: Report) -> Kerne
 
 impl fmt::Display for PayloadError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        angzarr_embedded_diagnostic::display(self, f)
+        angzarr_diagnostic::display(self, f)
     }
 }
 
@@ -997,7 +982,7 @@ impl Diagnostic for PayloadError {
 
 impl fmt::Display for UpcastError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        angzarr_embedded_diagnostic::display(self, f)
+        angzarr_diagnostic::display(self, f)
     }
 }
 
@@ -1024,7 +1009,7 @@ impl Diagnostic for UpcastError {
 
 impl fmt::Display for UpcastChainError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        angzarr_embedded_diagnostic::display(self, f)
+        angzarr_diagnostic::display(self, f)
     }
 }
 

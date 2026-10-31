@@ -422,9 +422,8 @@ fn an_old_command_type_has_its_current_types_resolution() {
     let mut failing = Registry::new();
     failing
         .register::<Shelf>(
-            Upcaster::new("shelf-upcaster", "shelf").rule::<OldNote, shelf::Note>(|_| {
-                Err(angzarr_embedded_diagnostic::Report::new("toy-no"))
-            }),
+            Upcaster::new("shelf-upcaster", "shelf")
+                .rule::<OldNote, shelf::Note>(|_| Err(angzarr_diagnostic::Report::new("toy-no"))),
             crate::next::toys::handlers::<crate::next::toys::Shelf>(),
         )
         .unwrap();
@@ -467,7 +466,7 @@ mod tally {
             self.clone()
         }
 
-        fn from_snapshot(snapshot: Self) -> Result<Self, angzarr_embedded_diagnostic::Report> {
+        fn from_snapshot(snapshot: Self) -> Result<Self, angzarr_diagnostic::Report> {
             Ok(snapshot)
         }
 

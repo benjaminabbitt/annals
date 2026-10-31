@@ -48,9 +48,4 @@ exclude_re = [
     # The mutant is the code: a remote domain's command_types already
     # returns an empty Vec, so `vec![]` changes nothing.
     '''replace <impl CommandHandler for RemoteCommandHandler>::command_types -> Vec<String> with vec!\[\]$''',
-    # angzarr-embedded-yaml
-    # update_to's last check, that the edits reached the target, cannot fail:
-    # reach returns Ok only once each differing entry is set and each edit
-    # has read back as intended, so the guard is always true when reached.
-    'replace match guard same\(&self\.value, target\) with true in Document::update_to',
 ]

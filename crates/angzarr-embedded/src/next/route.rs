@@ -17,7 +17,7 @@ use std::collections::BTreeMap;
 use std::fmt;
 use std::sync::{Arc, OnceLock};
 
-use angzarr_embedded_diagnostic::{Arg, Diagnostic, Report};
+use angzarr_diagnostic::{Arg, Diagnostic, Report};
 use angzarr_proto::v1::ConflictResolution;
 use angzarr_router::domain::DomainDispatch;
 use angzarr_router::error::{BusinessStatus, CodedError, GrpcCode, HandlerError};

@@ -8,7 +8,7 @@ use crate::next::{
     assert_replay_fixtures, check_replay_fixtures, pack, Committed, Failure, KernelError,
     Malformed, Recovery, ReplayError, ReplayFixture, StepError, StoreError, Stream,
 };
-use angzarr_embedded_diagnostic::Report;
+use angzarr_diagnostic::Report;
 use angzarr_ports::Cause;
 use angzarr_router::error::{BusinessStatus, CodedError, GrpcCode, RouterReason};
 
@@ -588,7 +588,7 @@ fn every_failure_says_how_to_recover() {
 /// by the code, where the error is shown.
 #[test]
 fn errors_display_their_code_and_args_and_wrappers_their_cause_flattened() {
-    use angzarr_embedded_diagnostic::Diagnostic;
+    use angzarr_diagnostic::Diagnostic;
     let stale = KernelError::Stale {
         stream: crate::next::v1::Cover {
             edition: Some("what-if".to_string()),
@@ -676,7 +676,7 @@ fn errors_display_their_code_and_args_and_wrappers_their_cause_flattened() {
 /// and args, never in a sentence.
 #[test]
 fn an_unreachable_handler_carries_its_cause_as_a_key() {
-    use angzarr_embedded_diagnostic::{Arg, Diagnostic};
+    use angzarr_diagnostic::{Arg, Diagnostic};
     let unreachable = KernelError::HandlerUnavailable {
         stream: cover("account", 1),
         cause: "not-running".to_string(),
@@ -704,7 +704,7 @@ fn an_unreachable_handler_carries_its_cause_as_a_key() {
 /// under the adapter's own code, with its args.
 #[test]
 fn a_store_error_keeps_its_angzarr_ports_code_and_args() {
-    use angzarr_embedded_diagnostic::{Arg, Diagnostic};
+    use angzarr_diagnostic::{Arg, Diagnostic};
     let stream = cover("account", 1);
     let conflict = KernelError::Store(StoreError::Conflict {
         stream: Box::new(stream.clone()),
@@ -753,7 +753,7 @@ fn a_store_error_keeps_its_angzarr_ports_code_and_args() {
 /// back, never an upcasting or decoding failure.
 #[test]
 fn an_event_the_kernel_cannot_replay_is_its_own_error() {
-    use angzarr_embedded_diagnostic::Diagnostic;
+    use angzarr_diagnostic::Diagnostic;
     let unreadable = KernelError::Unreadable {
         stream: cover("account", 1),
         sequence: 4,

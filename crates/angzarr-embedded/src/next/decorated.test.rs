@@ -53,7 +53,7 @@ use ::angzarr_embedded::next::{
     MemoryDeadLetters, Payload, PayloadError, Recovery, Registry, Rejected, Sampled, State,
     StepError, Stream, Timestamp, Upcaster, WireError,
 };
-use angzarr_embedded_diagnostic::{Arg, Diagnostic, Report};
+use angzarr_diagnostic::{Arg, Diagnostic, Report};
 use angzarr_embedded_macros::{
     aggregate, applies, handles_cmd, handles_fact, on_event, on_refused, policy, process_manager,
     projector, projects,

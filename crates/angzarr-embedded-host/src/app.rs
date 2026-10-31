@@ -28,12 +28,12 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::future::Future;
 use std::path::Path;
 
+use angzarr_diagnostic::Report;
 use angzarr_embedded::next::v1::{CommandBook, Cover, EventBook, EventPage};
 use angzarr_embedded::next::{
     EventStore, Failure, Handled, Kernel, KernelError, Malformed, MemoryDeadLetters, OnPolicyBug,
     OnRetryable, Registry, Rejected, Sampled, StoreError, StreamRef, Target,
 };
-use angzarr_embedded_diagnostic::Report;
 use angzarr_router::pb::{CommandResponse, ComponentKind};
 use angzarr_store_sqlite::SqliteStore;
 

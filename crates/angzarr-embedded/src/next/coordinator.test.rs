@@ -181,7 +181,7 @@ mod dedup {
         let refused = handle::<crate::next::toys::Account>(&store, &registry, early(), &at(5));
         assert!(matches!(
             refused,
-            Err(Failure::Rejected(r)) if angzarr_embedded_diagnostic::Diagnostic::code(r.report()) == "toy-account-not-open"
+            Err(Failure::Rejected(r)) if angzarr_diagnostic::Diagnostic::code(r.report()) == "toy-account-not-open"
         ));
         assert!(streams(&store).is_empty());
 
@@ -865,7 +865,7 @@ mod snapshot {
     #[test]
     fn a_snapshot_whose_wire_form_is_not_a_valid_state_is_unreadable() {
         use crate::next::KernelError;
-        use angzarr_embedded_diagnostic::Diagnostic;
+        use angzarr_diagnostic::Diagnostic;
         let snapshot = Snapshot {
             sequence: 0,
             state: Some(pack(&crate::next::toys::ledger::LedgerSnapshot {
@@ -1019,7 +1019,7 @@ mod upcasting {
         > {
             Box::pin(std::future::ready(Err(
                 crate::next::UpcastError::Unavailable {
-                    cause: angzarr_embedded_diagnostic::Report::new("toy-sidecar-down"),
+                    cause: angzarr_diagnostic::Report::new("toy-sidecar-down"),
                 },
             )))
         }
@@ -1242,7 +1242,7 @@ mod admission {
     //! `starting_types`.
     use std::sync::Arc;
 
-    use angzarr_embedded_diagnostic::Diagnostic;
+    use angzarr_diagnostic::Diagnostic;
 
     use crate::next::angzarr_router::error::CodedError;
     use crate::next::angzarr_router::pb;
@@ -1410,7 +1410,7 @@ mod admission {
         let identified = check(deposit, &registry).unwrap().identify(&at(1));
         let failed: Result<crate::next::Any, UpcastError> = Err(UpcastError::Rule {
             source: "toy.account.cmd.v1.Deposit".to_string(),
-            error: angzarr_embedded_diagnostic::Report::new("toy-broken"),
+            error: angzarr_diagnostic::Report::new("toy-broken"),
         });
         let refused = admit(&registry, &identified, &failed, Vec::new(), false)
             .err()
