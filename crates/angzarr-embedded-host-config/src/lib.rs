@@ -158,8 +158,11 @@ impl HostConfig {
     /// required one, and a value outside its closed set or of the wrong
     /// type, each at its key path.
     pub fn from_yaml(text: &str, source: &str) -> Result<HostConfig, LoadError> {
-        let _ = (text, source);
-        Ok(HostConfig::default())
+        loader().load_as(Some(source), text, |doc| {
+            let mut doc = doc.clone();
+            doc.remove(KEY);
+            angzarr_yaml::from_value::<HostConfig>(&doc)
+        })
     }
 }
 
