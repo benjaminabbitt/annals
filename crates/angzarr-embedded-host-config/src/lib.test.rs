@@ -76,17 +76,13 @@ fn the_file_is_angzarr_yaml_stamped_schema_version_at_version_1() {
     assert_eq!(loader.legacy_key(), None);
 }
 
-/// Every fixture loads to what it must: the current ones to themselves,
-/// the unstamped one to itself stamped.
+/// Every fixture loads to itself: each is at the current version.
 #[test]
 fn the_fixtures_load() {
     loader().assert_fixtures(FIXTURES);
-    let unstamped: Vec<_> = FIXTURES
+    assert!(FIXTURES
         .iter()
-        .filter(|f| !f.input.contains("schema_version"))
-        .map(|f| f.name)
-        .collect();
-    assert_eq!(unstamped, ["fixtures/v0-unstamped.yaml"]);
+        .all(|f| f.input.contains("\nschema_version: 1\n")));
 }
 
 /// A current file loads, every key read as its comment says.
@@ -132,7 +128,7 @@ fn a_current_file_loads() {
 #[test]
 fn a_file_of_only_its_stamp_is_every_default() {
     assert_eq!(
-        HostConfig::from_yaml(FIXTURES[2].input, FIXTURES[2].name),
+        HostConfig::from_yaml(FIXTURES[1].input, FIXTURES[1].name),
         Ok(HostConfig::default())
     );
     assert_eq!(stamped(""), "schema_version: 1\n");
@@ -200,7 +196,7 @@ fn a_newer_file_is_refused_with_the_readers_code() {
 fn a_file_with_no_stamp_loads_as_the_current_version() {
     let body = "component:\n  - name: table\n    kind: domain\n    language: rust\n";
     let doc = angzarr_yaml::parse(body).unwrap();
-    assert_eq!(loader().version_of(&doc), Ok(0));
+    assert_eq!(loader().version_of(&doc), Ok(CURRENT));
     let stamped_config = read(body).unwrap();
     assert_eq!(stamped_config.components, [domain("table", "rust")]);
     assert_eq!(HostConfig::from_yaml(body, FILE_NAME), Ok(stamped_config));

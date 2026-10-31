@@ -103,21 +103,12 @@ pub const KEY: &str = angzarr_yaml::versioned::DEFAULT_KEY;
 pub const CURRENT: u32 = 1;
 
 /// The config's loader: kind [`KIND`], stamped under [`KEY`], at version
-/// [`CURRENT`], with a step from every older version it still reads.
+/// [`CURRENT`], with a step from every older version it still reads: none
+/// yet, so a file with no stamp reads as current.
 pub fn loader() -> Loader {
     Migrations::new(KIND, CURRENT)
-        .step(0, unstamped)
         .build()
         .expect("the host config's migration chain is whole")
-}
-
-/// The step from a file with no stamp (version 0) to version 1: none but
-/// the stamp, which the loader writes. Version 1 is the host config's
-/// first versioned shape, the shape the unstamped files already had, and a
-/// format with no older generation reads an unstamped file as current
-/// (the config-versioning rule).
-fn unstamped(_: &mut angzarr_yaml::Value) -> Result<(), angzarr_yaml::versioned::MigrationError> {
-    Ok(())
 }
 
 /// A config at every version the [`loader`] reads, and what each must
@@ -128,11 +119,6 @@ pub const FIXTURES: &[Fixture<'static>] = &[
         name: "fixtures/v1-documented.yaml",
         input: include_str!("../fixtures/v1-documented.yaml"),
         expected: None,
-    },
-    Fixture {
-        name: "fixtures/v0-unstamped.yaml",
-        input: include_str!("../fixtures/v0-unstamped.yaml"),
-        expected: Some(include_str!("../fixtures/v0-unstamped.expected.yaml")),
     },
     Fixture {
         name: "fixtures/v1-minimal.yaml",
