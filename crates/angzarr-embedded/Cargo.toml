@@ -15,21 +15,21 @@ rust-version = "1.89"
 # and the kernel's are the same types. Dependency-freeness was given up for
 # this deliberately: see docs/design/audit.md, *Layering*.
 [dependencies]
-angzarr-diagnostic = { git = "https://github.com/angzarr-io/angzarr", rev = "d704afc21812225e7c536ef4055bf48a3ef821e9" }
-angzarr-proto = { git = "https://github.com/angzarr-io/angzarr", rev = "d704afc21812225e7c536ef4055bf48a3ef821e9" }
+angzarr-diagnostic = { git = "https://github.com/angzarr-io/angzarr", rev = "a75eb28f8416ca485aea2e28fe7b45924404d3fe" }
+angzarr-proto = { git = "https://github.com/angzarr-io/angzarr", rev = "a75eb28f8416ca485aea2e28fe7b45924404d3fe" }
 prost = "0.14"
 prost-types = "0.14"
 # angzarr's shared storage contract (one async trait set, its errors and
 # codes): angzarr-embedded's store ports are these, pinned with angzarr-proto at the
 # same rev of angzarr core (both crates moved there from angzarr-project), so
 # both share one set of wire types.
-angzarr-ports = { git = "https://github.com/angzarr-io/angzarr", rev = "d704afc21812225e7c536ef4055bf48a3ef821e9" }
+angzarr-ports = { git = "https://github.com/angzarr-io/angzarr", rev = "a75eb28f8416ca485aea2e28fe7b45924404d3fe" }
 # angzarr's shared client router: business dispatch (handlers, typed
 # refusals and the refusal path), implemented once for every runtime. The
 # kernel calls it and keeps the check, identification, admission,
 # upcasting, snapshots, a policy's output checks, the store writes,
 # positions and resume.
-angzarr-router = { git = "https://github.com/angzarr-io/angzarr-router", rev = "0af194357d2e60cc56836d21464ce7deed16704b" }
+angzarr-router = { git = "https://github.com/angzarr-io/angzarr-router", rev = "6a736aed134fd64b7b0b83dc21641bbc2d6ff91f" }
 # angzarr's shared SQLite store, re-exported (`angzarr_embedded::angzarr_store_sqlite`)
 # so an application pins it through angzarr-embedded, at the rev the kernel
 # is built with. Behind the `sqlite` feature, off by default: it brings
@@ -47,7 +47,7 @@ sqlite = ["dep:angzarr-store-sqlite"]
 # names `::angzarr-embedded`; with `sqlite` on, so the re-export is tested.
 [dev-dependencies]
 angzarr-embedded = { path = ".", features = ["sqlite"] }
-angzarr-ports = { git = "https://github.com/angzarr-io/angzarr", rev = "d704afc21812225e7c536ef4055bf48a3ef821e9", features = ["memory"] }
+angzarr-ports = { git = "https://github.com/angzarr-io/angzarr", rev = "a75eb28f8416ca485aea2e28fe7b45924404d3fe", features = ["memory"] }
 angzarr-embedded-macros = { path = "../angzarr-embedded-macros" }
 angzarr-store-sqlite = { path = "../angzarr-store-sqlite" }
 tokio = { version = "1", features = ["macros", "rt", "rt-multi-thread"] }
