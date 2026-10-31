@@ -39,9 +39,9 @@ use crate::fake_child::{
 };
 
 /// The kernel's key for angzarr's `COORDINATOR_REASON_PM_NO_INSTANCE` (a router code reaches
-/// the caller under the kernel's own key, `angzarr-embedded-next-` and the
+/// the caller under the kernel's own key, `angzarr-embedded-` and the
 /// code in kebab case).
-const PM_NO_INSTANCE: &str = "angzarr-embedded-next-pm-no-instance";
+const PM_NO_INSTANCE: &str = "angzarr-embedded-pm-no-instance";
 
 fn root() -> Uuid {
     Uuid::from_bytes([0x0b; 16])

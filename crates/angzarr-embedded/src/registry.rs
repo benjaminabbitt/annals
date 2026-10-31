@@ -311,27 +311,25 @@ impl Diagnostic for Misconfigured {
     fn code(&self) -> &str {
         match self {
             Misconfigured::AlreadyRegistered { .. } => {
-                "angzarr-embedded-next-misconfigured-already-registered"
+                "angzarr-embedded-misconfigured-already-registered"
             }
             Misconfigured::UpcasterForAnotherDomain { .. } => {
-                "angzarr-embedded-next-misconfigured-upcaster-for-another-domain"
+                "angzarr-embedded-misconfigured-upcaster-for-another-domain"
             }
             Misconfigured::EmptyRulesVersion { .. } => {
-                "angzarr-embedded-next-misconfigured-empty-rules-version"
+                "angzarr-embedded-misconfigured-empty-rules-version"
             }
             Misconfigured::BadStateDescriptor { .. } => {
-                "angzarr-embedded-next-misconfigured-bad-state-descriptor"
+                "angzarr-embedded-misconfigured-bad-state-descriptor"
             }
             Misconfigured::UnsupportedResolution {
                 command_type: None, ..
-            } => "angzarr-embedded-next-misconfigured-unsupported-resolution",
+            } => "angzarr-embedded-misconfigured-unsupported-resolution",
             Misconfigured::UnsupportedResolution {
                 command_type: Some(_),
                 ..
-            } => "angzarr-embedded-next-misconfigured-unsupported-command-resolution",
-            Misconfigured::RemoteSource { .. } => {
-                "angzarr-embedded-next-misconfigured-remote-source"
-            }
+            } => "angzarr-embedded-misconfigured-unsupported-command-resolution",
+            Misconfigured::RemoteSource { .. } => "angzarr-embedded-misconfigured-remote-source",
         }
     }
 

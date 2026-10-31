@@ -886,7 +886,7 @@ fn a_child_described_again_is_refused_unless_the_registry_takes_it() {
     };
     let refused = order.registered_by(&unversioned, false);
     assert!(
-        matches!(&refused, Err(HostError::Register { cause }) if angzarr_diagnostic::Diagnostic::code(cause) == "angzarr-embedded-next-misconfigured-empty-rules-version"),
+        matches!(&refused, Err(HostError::Register { cause }) if angzarr_diagnostic::Diagnostic::code(cause) == "angzarr-embedded-misconfigured-empty-rules-version"),
         "{refused:?}"
     );
     assert_eq!(order.link.registered().descriptor, first, "the old kept");

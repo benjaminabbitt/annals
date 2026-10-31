@@ -128,7 +128,9 @@ angzarr-ports' own catalog, `angzarr_ports::EN_US` (re-exported as
 - **Codes are stable and never reused.** Kebab-case, starting with the
   crate's name (`angzarr-embedded-host-handshake-malformed`), and a valid Fluent message id. A code
   whose meaning changes gets a new code; a retired code is not given to
-  anything else.
+  anything else. The one exception was ruled once: the kernel's
+  `angzarr-embedded-next-*` codes lost their `next-` (docs/design/audit.md,
+  *The one rename of the kernel's codes*).
 - **Args carry data, never pre-formatted English.** Numbers, ids, paths and
   the text that was read are args; any phrase a player reads belongs in the
   catalog. A wrapped cause is `Arg::Nested`. An error does not hold a

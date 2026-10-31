@@ -3,7 +3,7 @@
 //! [`KernelError`] is a fault in delivery, storage or a log, for the
 //! operator.
 //!
-//! Each is a [`Diagnostic`], its codes under `angzarr-embedded-next-*` and its
+//! Each is a [`Diagnostic`], its codes under `angzarr-embedded-*` and its
 //! messages in `locales/en-US/angzarr-embedded.ftl`; a wrapper of another error
 //! ([`Failure::Rejected`], [`Failure::Kernel`], [`StepError`],
 //! [`KernelError::Malformed`], [`KernelError::Replay`],
@@ -608,9 +608,9 @@ impl<R: Diagnostic> Diagnostic for Failure<R> {
     fn code(&self) -> &str {
         match self {
             Failure::Rejected(rejection) => rejection.code(),
-            Failure::Downstream { .. } => "angzarr-embedded-next-downstream",
+            Failure::Downstream { .. } => "angzarr-embedded-downstream",
             Failure::Kernel(error) => error.code(),
-            Failure::Projection { .. } => "angzarr-embedded-next-projection-failed",
+            Failure::Projection { .. } => "angzarr-embedded-projection-failed",
         }
     }
 
@@ -667,29 +667,25 @@ impl Diagnostic for KernelError {
     fn code(&self) -> &str {
         match self {
             KernelError::Malformed(m) => m.code(),
-            KernelError::Stale { .. } => "angzarr-embedded-next-stale",
-            KernelError::ExpectedSequenceAhead { .. } => {
-                "angzarr-embedded-next-expected-sequence-ahead"
-            }
-            KernelError::Unresolved { .. } => "angzarr-embedded-next-unresolved",
-            KernelError::RetryCapExhausted { .. } => "angzarr-embedded-next-retry-cap-exhausted",
-            KernelError::RulesVersionMismatch { .. } => {
-                "angzarr-embedded-next-rules-version-mismatch"
-            }
-            KernelError::Overlap { .. } => "angzarr-embedded-next-overlap",
-            KernelError::UnknownType { .. } => "angzarr-embedded-next-unknown-type",
-            KernelError::InvalidPayload { .. } => "angzarr-embedded-next-invalid-payload",
-            KernelError::Upcast { .. } => "angzarr-embedded-next-upcast",
-            KernelError::WrongDomain { .. } => "angzarr-embedded-next-wrong-domain",
-            KernelError::ChainTooDeep { .. } => "angzarr-embedded-next-chain-too-deep",
-            KernelError::TooManySteps { .. } => "angzarr-embedded-next-step-limit",
-            KernelError::BeforeSnapshot { .. } => "angzarr-embedded-next-before-snapshot",
-            KernelError::UnregisteredDomain { .. } => "angzarr-embedded-next-unregistered-domain",
+            KernelError::Stale { .. } => "angzarr-embedded-stale",
+            KernelError::ExpectedSequenceAhead { .. } => "angzarr-embedded-expected-sequence-ahead",
+            KernelError::Unresolved { .. } => "angzarr-embedded-unresolved",
+            KernelError::RetryCapExhausted { .. } => "angzarr-embedded-retry-cap-exhausted",
+            KernelError::RulesVersionMismatch { .. } => "angzarr-embedded-rules-version-mismatch",
+            KernelError::Overlap { .. } => "angzarr-embedded-overlap",
+            KernelError::UnknownType { .. } => "angzarr-embedded-unknown-type",
+            KernelError::InvalidPayload { .. } => "angzarr-embedded-invalid-payload",
+            KernelError::Upcast { .. } => "angzarr-embedded-upcast",
+            KernelError::WrongDomain { .. } => "angzarr-embedded-wrong-domain",
+            KernelError::ChainTooDeep { .. } => "angzarr-embedded-chain-too-deep",
+            KernelError::TooManySteps { .. } => "angzarr-embedded-step-limit",
+            KernelError::BeforeSnapshot { .. } => "angzarr-embedded-before-snapshot",
+            KernelError::UnregisteredDomain { .. } => "angzarr-embedded-unregistered-domain",
             KernelError::Replay(error) => error.code(),
-            KernelError::Unreadable { .. } => "angzarr-embedded-next-unreadable",
+            KernelError::Unreadable { .. } => "angzarr-embedded-unreadable",
             KernelError::Store(error) => error.code(),
             KernelError::Router(error) => router_diagnostic(error).0,
-            KernelError::HandlerUnavailable { .. } => "angzarr-embedded-next-handler-unavailable",
+            KernelError::HandlerUnavailable { .. } => "angzarr-embedded-handler-unavailable",
         }
     }
 
@@ -885,12 +881,10 @@ impl fmt::Display for ReplayError {
 impl Diagnostic for ReplayError {
     fn code(&self) -> &str {
         match self {
-            ReplayError::OutOfSequence { .. } => "angzarr-embedded-next-replay-out-of-sequence",
-            ReplayError::RecordedBackwards { .. } => {
-                "angzarr-embedded-next-replay-recorded-backwards"
-            }
-            ReplayError::IncompleteMeta { .. } => "angzarr-embedded-next-replay-incomplete-meta",
-            ReplayError::WrongDomain { .. } => "angzarr-embedded-next-replay-wrong-domain",
+            ReplayError::OutOfSequence { .. } => "angzarr-embedded-replay-out-of-sequence",
+            ReplayError::RecordedBackwards { .. } => "angzarr-embedded-replay-recorded-backwards",
+            ReplayError::IncompleteMeta { .. } => "angzarr-embedded-replay-incomplete-meta",
+            ReplayError::WrongDomain { .. } => "angzarr-embedded-replay-wrong-domain",
         }
     }
 
@@ -961,9 +955,9 @@ impl std::error::Error for PayloadError {}
 impl Diagnostic for PayloadError {
     fn code(&self) -> &str {
         match self {
-            PayloadError::UnknownType { .. } => "angzarr-embedded-next-payload-unknown-type",
-            PayloadError::Decode { .. } => "angzarr-embedded-next-payload-decode",
-            PayloadError::Invalid { .. } => "angzarr-embedded-next-payload-invalid",
+            PayloadError::UnknownType { .. } => "angzarr-embedded-payload-unknown-type",
+            PayloadError::Decode { .. } => "angzarr-embedded-payload-decode",
+            PayloadError::Invalid { .. } => "angzarr-embedded-payload-invalid",
         }
     }
 
@@ -990,8 +984,8 @@ impl Diagnostic for UpcastError {
     fn code(&self) -> &str {
         match self {
             UpcastError::Payload(error) => error.code(),
-            UpcastError::Rule { .. } => "angzarr-embedded-next-upcast-rule",
-            UpcastError::Unavailable { .. } => "angzarr-embedded-next-upcast-unavailable",
+            UpcastError::Rule { .. } => "angzarr-embedded-upcast-rule",
+            UpcastError::Unavailable { .. } => "angzarr-embedded-upcast-unavailable",
         }
     }
 
@@ -1016,9 +1010,9 @@ impl fmt::Display for UpcastChainError {
 impl Diagnostic for UpcastChainError {
     fn code(&self) -> &str {
         match self.problem {
-            ChainProblem::Duplicate { .. } => "angzarr-embedded-next-upcaster-duplicate",
-            ChainProblem::OutOfOrder { .. } => "angzarr-embedded-next-upcaster-out-of-order",
-            ChainProblem::DeadEnd { .. } => "angzarr-embedded-next-upcaster-dead-end",
+            ChainProblem::Duplicate { .. } => "angzarr-embedded-upcaster-duplicate",
+            ChainProblem::OutOfOrder { .. } => "angzarr-embedded-upcaster-out-of-order",
+            ChainProblem::DeadEnd { .. } => "angzarr-embedded-upcaster-dead-end",
         }
     }
 

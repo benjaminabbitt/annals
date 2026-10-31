@@ -445,7 +445,7 @@ impl angzarr_router::router::ProjectorHandler for Quiet {
 /// refused at startup, naming both.
 #[test]
 #[should_panic(
-    expected = "angzarr-embedded-next-misconfigured-remote-source domain=bank component=bank-till"
+    expected = "angzarr-embedded-misconfigured-remote-source domain=bank component=bank-till"
 )]
 fn a_policy_of_a_remote_domains_events_is_refused() {
     let coordinator = FakeCoordinator::answering(Answer::Events(DeliveryOutcome::Applied, vec![]));
@@ -456,7 +456,7 @@ fn a_policy_of_a_remote_domains_events_is_refused() {
 /// The same, a projector of a remote domain's events, among its sources.
 #[test]
 #[should_panic(
-    expected = "angzarr-embedded-next-misconfigured-remote-source domain=bank component=quiet"
+    expected = "angzarr-embedded-misconfigured-remote-source domain=bank component=quiet"
 )]
 fn a_projector_of_a_remote_domains_events_is_refused() {
     let coordinator = FakeCoordinator::answering(Answer::Events(DeliveryOutcome::Applied, vec![]));

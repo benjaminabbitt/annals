@@ -34,9 +34,9 @@ use super::payload::{type_name, Payload};
 /// under, for every reason angzarr-router answers with (each `RouterReason`
 /// but `UNSPECIFIED`) and every coordinator key the kernel answers in that
 /// shape ([`reasons::ANSWERED`](super::reasons::ANSWERED)):
-/// `angzarr-embedded-next-` and the reason, its enum's prefix dropped, in
+/// `angzarr-embedded-` and the reason, its enum's prefix dropped, in
 /// kebab-case (`COORDINATOR_REASON_PM_NO_INSTANCE` is
-/// `angzarr-embedded-next-pm-no-instance`); `None` for a reason that is
+/// `angzarr-embedded-pm-no-instance`); `None` for a reason that is
 /// neither (a domain's own). The catalog check holds the catalog to the
 /// router's list.
 pub(crate) fn reason_code(reason: &str) -> Option<&'static str> {
@@ -57,10 +57,10 @@ pub(crate) fn forwarded() -> impl Iterator<Item = &'static str> {
     )
 }
 
-/// `PREFIX_REASON` as `angzarr-embedded-next-reason`.
+/// `PREFIX_REASON` as `angzarr-embedded-reason`.
 fn kebab(reason: &str) -> String {
     format!(
-        "angzarr-embedded-next-{}",
+        "angzarr-embedded-{}",
         super::reasons::unprefixed(reason)
             .to_ascii_lowercase()
             .replace('_', "-")

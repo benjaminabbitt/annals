@@ -136,7 +136,7 @@ fn decode_as_refuses_a_wire_message_its_domain_type_cannot_hold() {
         panic!("expected an invalid payload, got {error:?}");
     };
     assert_eq!(type_url, "/toy.wire.v1.Stamped");
-    assert_eq!(reason.code(), "angzarr-embedded-next-wire-missing");
+    assert_eq!(reason.code(), "angzarr-embedded-wire-missing");
 }
 
 #[test]

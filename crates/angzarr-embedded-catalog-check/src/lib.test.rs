@@ -286,7 +286,7 @@ fn router_reasons() -> Vec<String> {
 }
 
 /// Every reason angzarr-router refuses with is an angzarr-embedded code of
-/// its own, `angzarr-embedded-next-` and the reason without its
+/// its own, `angzarr-embedded-` and the reason without its
 /// `ROUTER_REASON_` prefix in kebab-case, with a
 /// message in every locale: `KernelError::Router` forwards the router's
 /// `CodedError` under it.
@@ -302,7 +302,7 @@ fn every_router_reason_has_its_own_code_and_message() {
         .collect();
     for reason in router_reasons() {
         let expected = format!(
-            "angzarr-embedded-next-{}",
+            "angzarr-embedded-{}",
             reason
                 .strip_prefix("ROUTER_REASON_")
                 .expect("a router reason carries its enum's prefix")
@@ -322,6 +322,61 @@ fn every_router_reason_has_its_own_code_and_message() {
             if catalog.variables(&expected).is_none() {
                 problems.push(format!("{locale}: no message for {expected} ({reason})"));
             }
+        }
+    }
+    assert!(problems.is_empty(), "{}", problems.join("\n"));
+}
+
+/// The kernel's codes were `angzarr-embedded-next-*` and are
+/// `angzarr-embedded-*`, the one rule being "strip `next-`"
+/// (docs/design/audit.md, *The one rename of the kernel's codes*). The rule collides with nothing: no kernel code is left under the old
+/// prefix, in its source or any catalog; none lands under another checked
+/// crate's name (`angzarr-embedded-host-…`), where it would read as that
+/// crate's; and no two codes, the kernel's or another crate's, are the
+/// same, so no old code maps onto one that already meant something else.
+#[test]
+fn the_kernels_codes_lost_next_and_collide_with_nothing() {
+    const OLD: &str = "angzarr-embedded-next-";
+    let mut problems = Vec::new();
+    let catalogs = catalogs(&mut problems);
+    let mut all: BTreeMap<String, &str> = BTreeMap::new();
+    let mut kernel = BTreeSet::new();
+    for (krate, diagnostics) in samples() {
+        let mut codes = BTreeSet::new();
+        for d in diagnostics
+            .iter()
+            .filter(|d| !d.code().starts_with("angzarr-ports-"))
+        {
+            own_codes(&**d, krate, &mut codes);
+        }
+        for code in &codes {
+            if let Some(previous) = all.insert(code.clone(), krate) {
+                problems.push(format!("{code}: {previous}'s and {krate}'s"));
+            }
+        }
+        if krate == "angzarr-embedded" {
+            kernel = codes;
+        }
+    }
+    assert!(!kernel.is_empty(), "no kernel codes sampled");
+    for code in &kernel {
+        if code.starts_with(OLD) {
+            problems.push(format!("{code}: still under {OLD}"));
+        }
+        if owner(code) != Some("angzarr-embedded") {
+            problems.push(format!("{code}: reads as {:?}'s", owner(code)));
+        }
+    }
+    for (krate, by_locale) in &catalogs {
+        for (locale, ftl) in by_locale {
+            if ftl.contains(OLD) {
+                problems.push(format!("{krate} ({locale}): names {OLD}…"));
+            }
+        }
+    }
+    for code in code_literals("angzarr-embedded") {
+        if code.starts_with(OLD) {
+            problems.push(format!("{code}: in angzarr-embedded's source"));
         }
     }
     assert!(problems.is_empty(), "{}", problems.join("\n"));

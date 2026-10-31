@@ -2575,7 +2575,7 @@ mod failed {
         assert_eq!(
             said(rejected),
             (
-                "angzarr-embedded-next-command-refused".to_string(),
+                "angzarr-embedded-command-refused".to_string(),
                 vec![(
                     "refusal_type".to_string(),
                     "toy.meter.v1.MeterSealed".to_string()
@@ -3222,7 +3222,7 @@ mod process_manager {
         let Err(refused) = handle_in::<BuyIn>(&store, &registry, &log, 2, held) else {
             panic!("a command for no instance is refused");
         };
-        assert_eq!(refused.code(), "angzarr-embedded-next-pm-no-instance");
+        assert_eq!(refused.code(), "angzarr-embedded-pm-no-instance");
         assert_eq!(refused.recovery(), Recovery::Business);
         assert_eq!(buy_in_events(&store, &correlation(2)), None);
     }
@@ -3274,7 +3274,7 @@ mod process_manager {
             .execute(held(2), &registry, &sampled, &log, &mut [])
             .ready()
             .expect_err("no instance");
-        assert_eq!(refused.code(), "angzarr-embedded-next-pm-no-instance");
+        assert_eq!(refused.code(), "angzarr-embedded-pm-no-instance");
         buy_in
             .execute(
                 start(&correlation(11), 3, 0),
@@ -3562,7 +3562,7 @@ mod policy_errors {
             .on_event(&corrupt, &ctx)
             .err()
             .expect("an event it marks that does not decode fails it");
-        assert_eq!(error.code(), "angzarr-embedded-next-payload-decode");
+        assert_eq!(error.code(), "angzarr-embedded-payload-decode");
         assert!(
             error.args().iter().any(|(name, arg)| *name == "type_url"
                 && matches!(arg, Arg::Str(url) if *url == corrupt.type_url)),
@@ -3807,7 +3807,7 @@ mod typed_refusals {
     #[test]
     fn a_typed_refusal_is_keyed_command_refused_with_its_type() {
         let typed = Rejection::<Refused>::Typed(markup::TypedRefusal::of(&WalletClosed {}));
-        assert_eq!(typed.code(), "angzarr-embedded-next-command-refused");
+        assert_eq!(typed.code(), "angzarr-embedded-command-refused");
         assert!(
             matches!(&typed.args()[..], [("refusal_type", Arg::Str(t))] if t == "toy.wallet.v1.WalletClosed"),
             "{:?}",
@@ -3815,7 +3815,7 @@ mod typed_refusals {
         );
         assert_eq!(
             typed.to_string(),
-            "angzarr-embedded-next-command-refused refusal_type=toy.wallet.v1.WalletClosed"
+            "angzarr-embedded-command-refused refusal_type=toy.wallet.v1.WalletClosed"
         );
         let message = Rejection::<Refused>::Message(Refused::Overdrawn { short: 20 });
         assert_eq!(message.to_string(), "toy-wallet-overdrawn short=20");
@@ -3920,7 +3920,7 @@ mod typed_refusals {
             (rejection.refusal_object().cloned(), rejection.to_string()),
             (
                 Some(any(WalletClosed {})),
-                "angzarr-embedded-next-command-refused refusal_type=toy.wallet.v1.WalletClosed"
+                "angzarr-embedded-command-refused refusal_type=toy.wallet.v1.WalletClosed"
                     .to_string()
             )
         );
@@ -4073,7 +4073,7 @@ mod policy_refusals {
         let error = TranslatingBuyInWallet
             .on_refused(&refusal, &CommandContext::default())
             .expect_err("a command it translates that does not decode fails it");
-        assert_eq!(error.code(), "angzarr-embedded-next-payload-decode");
+        assert_eq!(error.code(), "angzarr-embedded-payload-decode");
         let args = error.args();
         assert!(
             args.iter().any(|(name, arg)| *name == "type_url"
@@ -4226,7 +4226,7 @@ mod policy_refusals {
         };
         assert_eq!(
             refused.code(),
-            "angzarr-embedded-next-malformed-refusal-misaddressed"
+            "angzarr-embedded-malformed-refusal-misaddressed"
         );
         assert_eq!(
             buy_in_events(&store, &correlation(3)),
@@ -5250,7 +5250,7 @@ mod router {
             "{origin:?}"
         );
         assert_eq!(origin.recovery(), Recovery::Retry);
-        assert_eq!(origin.code(), "angzarr-embedded-next-handler-unavailable");
+        assert_eq!(origin.code(), "angzarr-embedded-handler-unavailable");
 
         handle_in::<Wallet>(
             &store,

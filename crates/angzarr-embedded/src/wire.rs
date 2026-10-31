@@ -35,8 +35,8 @@ impl fmt::Display for WireError {
 impl Diagnostic for WireError {
     fn code(&self) -> &str {
         match self {
-            WireError::Missing { .. } => "angzarr-embedded-next-wire-missing",
-            WireError::UnknownEnum { .. } => "angzarr-embedded-next-wire-unknown-enum",
+            WireError::Missing { .. } => "angzarr-embedded-wire-missing",
+            WireError::UnknownEnum { .. } => "angzarr-embedded-wire-unknown-enum",
         }
     }
 

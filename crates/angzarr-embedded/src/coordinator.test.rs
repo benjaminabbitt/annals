@@ -864,7 +864,7 @@ mod snapshot {
         let KernelError::Unreadable { reason, .. } = error else {
             panic!("expected an unreadable snapshot, got {error:?}");
         };
-        assert_eq!(reason.code(), "angzarr-embedded-next-payload-invalid");
+        assert_eq!(reason.code(), "angzarr-embedded-payload-invalid");
     }
 }
 
@@ -1296,10 +1296,7 @@ mod admission {
         let Failure::Rejected(rejected) = &refused else {
             panic!("a business refusal: {refused:?}");
         };
-        assert_eq!(
-            rejected.report().code(),
-            "angzarr-embedded-next-pm-no-instance"
-        );
+        assert_eq!(rejected.report().code(), "angzarr-embedded-pm-no-instance");
         assert!(pages(&store, &stream).is_empty(), "nothing written");
 
         // A non-starting fact is skipped: applied, with no events.

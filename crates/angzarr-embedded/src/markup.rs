@@ -457,7 +457,7 @@ records_shape! {
 ///   not delivered, decided before the handler by the type after
 ///   upcasting: a FACT is skipped silently (applied, no events, nothing
 ///   dead-lettered), and a COMMAND is refused (`COORDINATOR_REASON_PM_NO_INSTANCE`, forwarded
-///   as `angzarr-embedded-next-pm-no-instance`, a business refusal, so a
+///   as `angzarr-embedded-pm-no-instance`, a business refusal, so a
 ///   policy's refused command yields its refusal fact like any other),
 ///   recording nothing.
 ///
@@ -516,7 +516,7 @@ pub struct TypedRefusal {
 }
 
 /// The code a typed refusal is keyed under: angzarr's ROUTER_REASON_COMMAND_REFUSED.
-const COMMAND_REFUSED: &str = "angzarr-embedded-next-command-refused";
+const COMMAND_REFUSED: &str = "angzarr-embedded-command-refused";
 
 impl TypedRefusal {
     /// `object`, packed.
@@ -776,7 +776,7 @@ impl<A: Domain, X: Into<A::Rejection>> Fails<A> for Failed<X> {
 /// `CommandRefused` fact by the refused command's type to the handler for
 /// it: which refusals a domain handles is inferred from its handlers, so a
 /// `CommandRefused` for a command it has no handler for is caught at run
-/// time (`angzarr-embedded-next-no-refusal-handler`, dead-lettered).
+/// time (`angzarr-embedded-no-refusal-handler`, dead-lettered).
 #[derive(Clone, PartialEq, Debug)]
 pub struct CommandRefused<C> {
     command: C,

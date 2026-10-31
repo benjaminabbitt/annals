@@ -27,7 +27,7 @@ fn a_dead_letter_line_starts_with_the_warning_and_names_the_command() {
             book.to_book(),
         )),
         reason: Some(Diagnostic {
-            code: "angzarr-embedded-next-unhandled-handler-error".to_string(),
+            code: "angzarr-embedded-unhandled-handler-error".to_string(),
             args: [(
                 "cause".to_string(),
                 "ROUTER_REASON_HANDLER_PANICKED".to_string(),
@@ -50,7 +50,7 @@ fn a_dead_letter_line_starts_with_the_warning_and_names_the_command() {
     // (decision 14.37).
     assert!(
         line.contains(
-            "account: angzarr-embedded-next-unhandled-handler-error cause=ROUTER_REASON_HANDLER_PANICKED"
+            "account: angzarr-embedded-unhandled-handler-error cause=ROUTER_REASON_HANDLER_PANICKED"
         ),
         "{line}"
     );
@@ -395,7 +395,7 @@ fn a_kernel_error_with_no_spec_key_keeps_its_own_code() {
     };
     let letter = letter_for(Cause::Kernel(&error));
     let reason = crate::route::diagnostic(&error);
-    assert_eq!(reason.code, "angzarr-embedded-next-unregistered-domain");
+    assert_eq!(reason.code, "angzarr-embedded-unregistered-domain");
     assert_eq!(letter.reason, Some(reason.clone()));
     assert_eq!(
         letter.rejection_details,
@@ -580,7 +580,7 @@ fn a_malformed_kernel_books_letter_is_keyed_where_the_spec_has_a_key() {
         ),
         (
             Malformed::NoBody,
-            wire("angzarr-embedded-next-malformed-no-body", &[]),
+            wire("angzarr-embedded-malformed-no-body", &[]),
         ),
     ] {
         let letter = letter_for(Cause::Malformed(&malformed));

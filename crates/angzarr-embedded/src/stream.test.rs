@@ -601,11 +601,11 @@ fn errors_display_their_code_and_args_and_wrappers_their_cause_flattened() {
     let text = stale.to_string();
     assert_eq!(
         text,
-        format!("angzarr-embedded-next-stale stream={at} expected=1 actual=2")
+        format!("angzarr-embedded-stale stream={at} expected=1 actual=2")
     );
     let failure = Failure::<crate::toys::Refused>::Kernel(stale.clone());
     assert_eq!(failure.to_string(), text);
-    assert_eq!(failure.code(), "angzarr-embedded-next-stale");
+    assert_eq!(failure.code(), "angzarr-embedded-stale");
     assert_eq!(failure.args().len(), 3);
     let rejected = Failure::Rejected(crate::toys::Refused::Overdrawn { short: 3 });
     assert_eq!(rejected.code(), "toy-account-overdrawn");
@@ -621,7 +621,7 @@ fn errors_display_their_code_and_args_and_wrappers_their_cause_flattened() {
     assert_eq!(
         downstream.to_string(),
         format!(
-            "angzarr-embedded-next-downstream depth=0 error=angzarr-embedded-next-stale \
+            "angzarr-embedded-downstream depth=0 error=angzarr-embedded-stale \
              error.stream={at} error.expected=1 error.actual=2"
         )
     );
@@ -630,17 +630,14 @@ fn errors_display_their_code_and_args_and_wrappers_their_cause_flattened() {
     });
     assert_eq!(
         upcast.to_string(),
-        "angzarr-embedded-next-payload-unknown-type type_url=/a.B"
+        "angzarr-embedded-payload-unknown-type type_url=/a.B"
     );
     let malformed = KernelError::Malformed(Malformed::NoCover);
-    assert_eq!(
-        malformed.to_string(),
-        "angzarr-embedded-next-malformed-no-cover"
-    );
+    assert_eq!(malformed.to_string(), "angzarr-embedded-malformed-no-cover");
     let replay = KernelError::Replay(ReplayError::RecordedBackwards { sequence: 3 });
     assert_eq!(
         replay.to_string(),
-        "angzarr-embedded-next-replay-recorded-backwards sequence=3"
+        "angzarr-embedded-replay-recorded-backwards sequence=3"
     );
     let store = KernelError::Store(StoreError::Unavailable(Cause::new("x-down", [])));
     assert_eq!(store.code(), "angzarr-ports-store-unavailable");
@@ -666,7 +663,7 @@ fn errors_display_their_code_and_args_and_wrappers_their_cause_flattened() {
     ));
     assert_eq!(
         router.to_string(),
-        "angzarr-embedded-next-unhandled-handler-error cause=PLAYER_BROKE cause.seat=2",
+        "angzarr-embedded-unhandled-handler-error cause=PLAYER_BROKE cause.seat=2",
         "the kernel's code, never the router's English or its SCREAMING reason"
     );
 }
@@ -681,10 +678,7 @@ fn an_unreachable_handler_carries_its_cause_as_a_key() {
         stream: cover("account", 1),
         cause: "not-running".to_string(),
     };
-    assert_eq!(
-        unreachable.code(),
-        "angzarr-embedded-next-handler-unavailable"
-    );
+    assert_eq!(unreachable.code(), "angzarr-embedded-handler-unavailable");
     assert!(unreachable
         .args()
         .iter()
@@ -692,7 +686,7 @@ fn an_unreachable_handler_carries_its_cause_as_a_key() {
     assert_eq!(
         unreachable.to_string(),
         format!(
-            "angzarr-embedded-next-handler-unavailable stream=account/{} cause=not-running",
+            "angzarr-embedded-handler-unavailable stream=account/{} cause=not-running",
             root(1)
         )
     );
@@ -759,7 +753,7 @@ fn an_event_the_kernel_cannot_replay_is_its_own_error() {
         sequence: 4,
         reason: Report::new("x-bad"),
     };
-    assert_eq!(unreadable.code(), "angzarr-embedded-next-unreadable");
+    assert_eq!(unreadable.code(), "angzarr-embedded-unreadable");
     assert_eq!(
         unreadable
             .args()
@@ -770,7 +764,7 @@ fn an_event_the_kernel_cannot_replay_is_its_own_error() {
     );
     assert!(unreadable
         .to_string()
-        .starts_with("angzarr-embedded-next-unreadable stream=account/"));
+        .starts_with("angzarr-embedded-unreadable stream=account/"));
 }
 
 #[test]

@@ -60,7 +60,7 @@ fn a_fold_that_fails_carries_its_cause_as_a_key_and_args() {
     let extra = |key: &str| error.extras.get(key).map(String::as_str);
     assert_eq!(
         extra("cause"),
-        Some("angzarr-embedded-next-payload-decode"),
+        Some("angzarr-embedded-payload-decode"),
         "{error:?}"
     );
     assert_eq!(
@@ -117,7 +117,7 @@ fn a_refusal_goes_out_and_reads_back_under_each_business_status() {
         assert_eq!(typed.code, "ROUTER_REASON_COMMAND_REFUSED", "{status:?}");
         let read = Rejected::of(&typed);
         assert_eq!(read.status(), status);
-        assert_eq!(read.code(), "angzarr-embedded-next-command-refused");
+        assert_eq!(read.code(), "angzarr-embedded-command-refused");
         assert_eq!(read.refusal_object(), Some(&object));
     }
 }

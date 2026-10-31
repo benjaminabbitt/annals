@@ -628,10 +628,10 @@ handler's own code and args as its cause (`cause=<code>`,
 `cause.<arg>=<value>`); the router catches a handler's panic, its cause
 ROUTER_REASON_HANDLER_PANICKED, and an error without a code of its own is
 ROUTER_REASON_UNHANDLED_HANDLER_ERROR too. Every router reason is forwarded under an
-angzarr-embedded code of its own (`angzarr-embedded-next-<reason>`, the reason without its
+angzarr-embedded code of its own (`angzarr-embedded-<reason>`, the reason without its
 `ROUTER_REASON_` or `COORDINATOR_REASON_` prefix), each
 with its own message; a handler's own code that no catalog holds is
-`angzarr-embedded-next-unhandled-handler-error` with that code its
+`angzarr-embedded-unhandled-handler-error` with that code its
 `cause`. A remote handler that cannot be reached
 (`COORDINATOR_REASON_HANDLER_UNAVAILABLE`, UNAVAILABLE) is
 `KernelError::HandlerUnavailable`, a retryable bug. The kernel's limits
@@ -1062,8 +1062,17 @@ names the trigger; angzarr-embedded has no tracing dependency and reports it now
 | `Upcast`, `WrongDomain`, `ChainTooDeep`, `BeforeSnapshot`, `UnregisteredDomain` (a stored stream of a domain the application did not register; an incoming book for one is `Malformed`), `Replay(..)`, `StoreError::Discontinuous`, `Unreadable` | a bug or a misconfiguration | `Bug` |
 
 A duplicate is not an error: it is `Handled::Duplicate`. Each error becomes
-a `Diagnostic` with the implementation (codes under `angzarr-embedded-next-*`,
+a `Diagnostic` with the implementation (codes under `angzarr-embedded-*`,
 messages in `locales/en-US/angzarr-embedded.ftl`).
+
+**The one rename of the kernel's codes (2026-10-31).** The kernel's codes
+were `angzarr-embedded-next-*`, after the `next` module the kernel lived in;
+the kernel moved to the crate root and its codes lost `next-`. The rule, for
+every one of them: strip `next-` (`angzarr-embedded-next-wire-missing` is
+`angzarr-embedded-wire-missing`). No new code is a code anything else had,
+and none falls under another crate's name (`angzarr-embedded-host-*`); the
+catalog check holds both. This is the only exception to "codes are stable and
+never reused": no other code was changed, and no old code means anything now.
 
 ## Mapping: identity
 
