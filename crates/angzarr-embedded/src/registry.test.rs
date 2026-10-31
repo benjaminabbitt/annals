@@ -1,10 +1,10 @@
 //! The registry: angzarr-embedded's mirror of `ComponentDescriptor.state`, looked up
 //! by `cover.domain`, and the conflict-resolution defaults. These run.
 
-use crate::next::v1::{ConflictResolution, Snapshot};
-use crate::next::{pack, Misconfigured, Registry, Upcaster};
+use crate::v1::{ConflictResolution, Snapshot};
+use crate::{pack, Misconfigured, Registry, Upcaster};
 
-use crate::next::toys::{account, registry, shelf, Account};
+use crate::toys::{account, registry, shelf, Account};
 
 #[test]
 fn registration_fills_the_state_descriptor_from_the_generated_impl() {
@@ -64,7 +64,7 @@ fn misconfiguration_is_refused_at_registration() {
     assert_eq!(
         registry.register::<Account>(
             Upcaster::new("u", "account"),
-            crate::next::toys::handlers::<crate::next::toys::Account>()
+            crate::toys::handlers::<crate::toys::Account>()
         ),
         Err(Misconfigured::AlreadyRegistered {
             domain: "account".to_string()
@@ -75,7 +75,7 @@ fn misconfiguration_is_refused_at_registration() {
     assert_eq!(
         fresh.register::<Account>(
             Upcaster::new("u", "ledger"),
-            crate::next::toys::handlers::<crate::next::toys::Account>()
+            crate::toys::handlers::<crate::toys::Account>()
         ),
         Err(Misconfigured::UpcasterForAnotherDomain {
             domain: "account".to_string(),
@@ -84,11 +84,11 @@ fn misconfiguration_is_refused_at_registration() {
     );
     /// An account built without a version.
     struct Unversioned;
-    impl crate::next::Domain for Unversioned {
+    impl crate::Domain for Unversioned {
         type State = account::AccountState;
         type Command = std::convert::Infallible;
         type Fact = std::convert::Infallible;
-        type Event = crate::next::toys::AccountEvent;
+        type Event = crate::toys::AccountEvent;
         type Rejection = std::convert::Infallible;
         const RULES_VERSION: &'static str = "";
         const NAME: &'static str = "unversioned";
@@ -105,8 +105,8 @@ fn misconfiguration_is_refused_at_registration() {
 
 #[test]
 fn a_configured_resolution_the_state_lacks_is_refused() {
-    use crate::next::toys::account::AccountState;
-    use crate::next::Domain;
+    use crate::toys::account::AccountState;
+    use crate::Domain;
 
     /// An account configured COMMUTATIVE although its state has no units.
     struct Eager;
@@ -114,7 +114,7 @@ fn a_configured_resolution_the_state_lacks_is_refused() {
         type State = AccountState;
         type Command = std::convert::Infallible;
         type Fact = std::convert::Infallible;
-        type Event = crate::next::toys::AccountEvent;
+        type Event = crate::toys::AccountEvent;
         type Rejection = std::convert::Infallible;
         const RULES_VERSION: &'static str = "v1";
         const NAME: &'static str = "eager";
@@ -137,7 +137,7 @@ fn a_configured_resolution_the_state_lacks_is_refused() {
 fn a_snapshot_is_usable_only_under_a_compatible_version_and_the_state_type() {
     let registry = registry();
     let state = pack(&account::AccountState::default());
-    let snapshot = |rules: &str, state: &crate::next::Any| Snapshot {
+    let snapshot = |rules: &str, state: &crate::Any| Snapshot {
         sequence: 3,
         state: Some(state.clone()),
         rules_version: rules.to_string(),
@@ -159,7 +159,7 @@ fn a_snapshot_is_usable_only_under_a_compatible_version_and_the_state_type() {
 
 #[test]
 fn a_state_descriptor_without_the_implicit_base_is_refused() {
-    use crate::next::v1::{ConflictResolution, StateDescriptor, StateOptions};
+    use crate::v1::{ConflictResolution, StateDescriptor, StateOptions};
 
     /// Lists STRICT only: not the base every generated descriptor has.
     #[derive(Clone, PartialEq, prost::Message)]
@@ -170,7 +170,7 @@ fn a_state_descriptor_without_the_implicit_base_is_refused() {
         const PACKAGE: &'static str = "toy.bad.v1";
     }
 
-    impl crate::next::State for StrictOnly {
+    impl crate::State for StrictOnly {
         type Snapshot = Self;
 
         fn to_snapshot(&self) -> Self {
@@ -193,7 +193,7 @@ fn a_state_descriptor_without_the_implicit_base_is_refused() {
 
     struct Bad;
 
-    impl crate::next::Domain for Bad {
+    impl crate::Domain for Bad {
         type State = StrictOnly;
         type Command = std::convert::Infallible;
         type Fact = std::convert::Infallible;
@@ -208,10 +208,10 @@ fn a_state_descriptor_without_the_implicit_base_is_refused() {
         }
     }
 
-    let mut registry = crate::next::Registry::new();
+    let mut registry = crate::Registry::new();
     assert_eq!(
-        registry.register::<Bad>(crate::next::Upcaster::new("u", "bad"), |t| t),
-        Err(crate::next::Misconfigured::BadStateDescriptor {
+        registry.register::<Bad>(crate::Upcaster::new("u", "bad"), |t| t),
+        Err(crate::Misconfigured::BadStateDescriptor {
             domain: "bad".to_string()
         })
     );
@@ -219,7 +219,7 @@ fn a_state_descriptor_without_the_implicit_base_is_refused() {
 
 #[test]
 fn a_state_descriptor_naming_another_type_than_its_snapshot_is_refused() {
-    use crate::next::v1::{ConflictResolution, StateDescriptor, StateOptions};
+    use crate::v1::{ConflictResolution, StateDescriptor, StateOptions};
 
     #[derive(Clone, PartialEq, prost::Message)]
     pub struct Snap {}
@@ -234,7 +234,7 @@ fn a_state_descriptor_naming_another_type_than_its_snapshot_is_refused() {
     #[derive(Clone, Default)]
     pub struct Misnamed;
 
-    impl crate::next::State for Misnamed {
+    impl crate::State for Misnamed {
         type Snapshot = Snap;
 
         fn to_snapshot(&self) -> Snap {
@@ -260,7 +260,7 @@ fn a_state_descriptor_naming_another_type_than_its_snapshot_is_refused() {
 
     struct Bad;
 
-    impl crate::next::Domain for Bad {
+    impl crate::Domain for Bad {
         type State = Misnamed;
         type Command = std::convert::Infallible;
         type Fact = std::convert::Infallible;
@@ -275,10 +275,10 @@ fn a_state_descriptor_naming_another_type_than_its_snapshot_is_refused() {
         }
     }
 
-    let mut registry = crate::next::Registry::new();
+    let mut registry = crate::Registry::new();
     assert_eq!(
-        registry.register::<Bad>(crate::next::Upcaster::new("u", "bad"), |t| t),
-        Err(crate::next::Misconfigured::BadStateDescriptor {
+        registry.register::<Bad>(crate::Upcaster::new("u", "bad"), |t| t),
+        Err(crate::Misconfigured::BadStateDescriptor {
             domain: "bad".to_string()
         })
     );
@@ -310,9 +310,7 @@ impl angzarr_router::router::CommandHandler for Hello {
     }
 }
 
-fn hello(
-    state: Option<crate::next::v1::StateDescriptor>,
-) -> angzarr_router::pb::ComponentDescriptor {
+fn hello(state: Option<crate::v1::StateDescriptor>) -> angzarr_router::pb::ComponentDescriptor {
     angzarr_router::pb::ComponentDescriptor {
         name: "hello".to_string(),
         rules_version: "h1".to_string(),
@@ -321,8 +319,8 @@ fn hello(
     }
 }
 
-fn base_state() -> crate::next::v1::StateDescriptor {
-    use crate::next::v1::{ConflictResolution, StateDescriptor, StateOptions};
+fn base_state() -> crate::v1::StateDescriptor {
+    use crate::v1::{ConflictResolution, StateDescriptor, StateOptions};
     StateDescriptor {
         type_url: "/toy.hello.v1.State".to_string(),
         options: Some(StateOptions {
@@ -340,7 +338,7 @@ fn base_state() -> crate::next::v1::StateDescriptor {
 fn a_command_handler_registers_by_its_descriptor() {
     use angzarr_router::pb::ComponentKind;
     let refused = |descriptor| {
-        crate::next::Registry::new()
+        crate::Registry::new()
             .command_handler(
                 "hello",
                 Hello {
@@ -360,7 +358,7 @@ fn a_command_handler_registers_by_its_descriptor() {
             domain: "hello".to_string()
         })
     );
-    let untyped = crate::next::v1::StateDescriptor {
+    let untyped = crate::v1::StateDescriptor {
         type_url: String::new(),
         ..base_state()
     };
@@ -377,7 +375,7 @@ fn a_command_handler_registers_by_its_descriptor() {
         })
     );
 
-    let mut registry = crate::next::Registry::new();
+    let mut registry = crate::Registry::new();
     registry
         .command_handler(
             "hello",
@@ -391,7 +389,7 @@ fn a_command_handler_registers_by_its_descriptor() {
     assert_eq!(registry.kind("hello"), ComponentKind::ProcessManager);
     assert_eq!(registry.kind("nowhere"), ComponentKind::Unspecified);
     assert_eq!(registry.rules_version("hello").as_deref(), Some("h1"));
-    let mut aggregate = crate::next::Registry::new();
+    let mut aggregate = crate::Registry::new();
     aggregate
         .command_handler(
             "hello",
@@ -406,14 +404,14 @@ fn a_command_handler_registers_by_its_descriptor() {
 }
 
 /// C-0563: a domain registered by its descriptor is described again
-/// through its [`Description`](crate::next::Description): the new
+/// through its [`Description`](crate::Description): the new
 /// descriptor replaces the old whole (its rules version, its state, a
 /// process manager's starting types), and one the registry refuses
 /// leaves the old in place.
 #[test]
 fn a_described_domain_is_replaced_whole_by_its_new_descriptor() {
     use angzarr_router::pb::ComponentKind;
-    let mut registry = crate::next::Registry::new();
+    let mut registry = crate::Registry::new();
     let description = registry
         .described_handler(
             "hello",
@@ -430,9 +428,9 @@ fn a_described_domain_is_replaced_whole_by_its_new_descriptor() {
         format!("{description:?}"),
         "Description { domain: \"hello\", .. }"
     );
-    let commutative = crate::next::v1::StateDescriptor {
+    let commutative = crate::v1::StateDescriptor {
         type_url: "/toy.hello.v2.State".to_string(),
-        options: Some(crate::next::v1::StateOptions {
+        options: Some(crate::v1::StateOptions {
             conflict_resolutions: vec![
                 ConflictResolution::Commutative as i32,
                 ConflictResolution::Strict as i32,
@@ -488,7 +486,7 @@ fn a_described_domain_is_replaced_whole_by_its_new_descriptor() {
 fn a_domain_is_named_as_a_component_by_its_kind() {
     use angzarr_router::pb::ComponentKind;
     let named = |kind| {
-        let mut registry = crate::next::Registry::new();
+        let mut registry = crate::Registry::new();
         registry
             .command_handler("hello", Hello { kind }, hello(Some(base_state())))
             .unwrap();
@@ -518,9 +516,9 @@ impl angzarr_router::router::ProjectorHandler for Named {
 
     async fn dispatch(
         &self,
-        _: &crate::next::v1::EventBook,
-    ) -> Result<crate::next::v1::Projection, angzarr_router::error::CodedError> {
-        Ok(crate::next::v1::Projection::default())
+        _: &crate::v1::EventBook,
+    ) -> Result<crate::v1::Projection, angzarr_router::error::CodedError> {
+        Ok(crate::v1::Projection::default())
     }
 }
 
@@ -561,7 +559,7 @@ fn a_projector_with_no_source_panics() {
 /// not SemVer, so stripped, only under exact equality (C-0524).
 #[test]
 fn a_snapshot_is_usable_under_the_registered_major_and_minor() {
-    let mut registry = crate::next::Registry::new();
+    let mut registry = crate::Registry::new();
     for (domain, version) in [("hello", "1.4.2+build.7"), ("label", "release-7")] {
         registry
             .command_handler(
@@ -578,7 +576,7 @@ fn a_snapshot_is_usable_under_the_registered_major_and_minor() {
     }
     let snapshot = |rules: &str| Snapshot {
         sequence: 3,
-        state: Some(crate::next::Any {
+        state: Some(crate::Any {
             type_url: "/toy.hello.v1.State".to_string(),
             value: Vec::new(),
         }),

@@ -1,13 +1,13 @@
 #[allow(unused_imports)]
-use crate::next::toys::prelude::*;
+use crate::toys::prelude::*;
 mod ingest {
     //! Facts: ingested, never decided and never refused, with a read-only
     //! context.
-    use crate::next::toys::prelude::*;
-    use crate::next::v1::CommandBook;
-    use crate::next::{ids, Payload};
+    use crate::toys::prelude::*;
+    use crate::v1::CommandBook;
+    use crate::{ids, Payload};
 
-    use crate::next::toys::{
+    use crate::toys::{
         account, at, command, cover, fact, handle, opened, payloads, registry, Account, AccountCmd,
         AccountEvent, AccountFact,
     };
@@ -41,7 +41,7 @@ mod ingest {
         let meta = handled.books()[0].pages[0].meta.clone().unwrap();
         assert_eq!(
             meta.causation,
-            Some(crate::next::v1::event_meta::Causation::CommandId(
+            Some(crate::v1::event_meta::Causation::CommandId(
                 ids::fact_command_id("pi_7")
             ))
         );
@@ -86,18 +86,18 @@ mod tx {
     //! What a decide reads through its `Tx`: a probe domain records every
     //! accessor into its event, reached as a policy's target so it has a
     //! causation too.
-    use crate::next::toys::prelude::*;
+    use crate::toys::prelude::*;
 
     use std::convert::Infallible;
 
-    use crate::next::toys::{Toy, ToyCtx};
-    use crate::next::v1::{ConflictResolution, StateDescriptor, StateOptions, Uuid};
-    use crate::next::{
+    use crate::toys::{Toy, ToyCtx};
+    use crate::v1::{ConflictResolution, StateDescriptor, StateOptions, Uuid};
+    use crate::{
         ids, pack, Decoder, Domain, Kernel, MemoryDeadLetters, Payload, PayloadError, Policy,
         Registry, State, Upcaster,
     };
 
-    use crate::next::toys::{at, command, cover, opened, Account, AccountCmd, Edit};
+    use crate::toys::{at, command, cover, opened, Account, AccountCmd, Edit};
 
     #[derive(Clone, PartialEq, prost::Message)]
     pub struct ProbeState {
@@ -203,14 +203,14 @@ mod tx {
     }
 
     impl Payload for ProbeEvent {
-        fn to_any(&self) -> crate::next::Any {
+        fn to_any(&self) -> crate::Any {
             match self {
                 ProbeEvent::Bumped => pack(&Bumped {}),
                 ProbeEvent::Probed(p) => pack(p),
             }
         }
 
-        fn from_any(any: &crate::next::Any) -> Result<Self, PayloadError> {
+        fn from_any(any: &crate::Any) -> Result<Self, PayloadError> {
             Decoder::new()
                 .on::<Bumped>(|_| ProbeEvent::Bumped)
                 .on::<Probed>(ProbeEvent::Probed)
@@ -226,11 +226,11 @@ mod tx {
     }
 
     impl Payload for Probe {
-        fn to_any(&self) -> crate::next::Any {
+        fn to_any(&self) -> crate::Any {
             pack(self)
         }
 
-        fn from_any(any: &crate::next::Any) -> Result<Self, PayloadError> {
+        fn from_any(any: &crate::Any) -> Result<Self, PayloadError> {
             Decoder::new().on::<Probe>(|p| p).decode(any)
         }
 
@@ -310,12 +310,11 @@ mod tx {
 
         fn on_event(
             &self,
-            _: &crate::next::Any,
-            _: &crate::next::markup::PolicyContext,
-        ) -> Result<Option<crate::next::markup::Commands<ProbeDomain>>, crate::next::markup::Report>
-        {
+            _: &crate::Any,
+            _: &crate::markup::PolicyContext,
+        ) -> Result<Option<crate::markup::Commands<ProbeDomain>>, crate::markup::Report> {
             Ok(Some(
-                crate::next::markup::Commands::none().send(probe_root(), &Probe { stash: 0 }),
+                crate::markup::Commands::none().send(probe_root(), &Probe { stash: 0 }),
             ))
         }
     }
@@ -325,25 +324,25 @@ mod tx {
         registry
             .register::<Account>(
                 Upcaster::new("u", "account"),
-                crate::next::toys::handlers::<crate::next::toys::Account>(),
+                crate::toys::handlers::<crate::toys::Account>(),
             )
             .unwrap();
         registry
             .register::<ProbeDomain>(
                 Upcaster::new("u", "probe"),
-                crate::next::toys::handlers::<ProbeDomain>(),
+                crate::toys::handlers::<ProbeDomain>(),
             )
             .unwrap();
         registry
     }
 
-    fn probes(books: &[crate::next::v1::EventBook]) -> Vec<Probed> {
+    fn probes(books: &[crate::v1::EventBook]) -> Vec<Probed> {
         let probe: Vec<_> = books
             .iter()
             .filter(|b| b.cover.as_ref().is_some_and(|c| c.domain == "probe"))
             .cloned()
             .collect();
-        crate::next::toys::payloads::<ProbeEvent>(&probe)
+        crate::toys::payloads::<ProbeEvent>(&probe)
             .into_iter()
             .filter_map(|e| match e {
                 ProbeEvent::Probed(p) => Some(p),
@@ -368,7 +367,7 @@ mod tx {
             .handle::<Account, _, _>(&store, book, &at(50), &mut ())
             .ready()
             .unwrap();
-        let trigger = crate::next::v1::EventRef {
+        let trigger = crate::v1::EventRef {
             stream: Some(cover("account", 1)),
             sequence: 2,
         };
@@ -382,7 +381,7 @@ mod tx {
                     .unwrap()
                     .value
                     .to_vec(),
-                correlation_id: crate::next::toys::correlation(6).value.to_vec(),
+                correlation_id: crate::toys::correlation(6).value.to_vec(),
                 causation: None,
                 first: 0,
                 next: 1,
@@ -405,7 +404,7 @@ mod tx {
         assert_eq!((probed.bumps_committed, probed.bumps_seen), (1, 2));
         assert_eq!(
             probed.correlation_id,
-            crate::next::toys::command_id(4).value.to_vec()
+            crate::toys::command_id(4).value.to_vec()
         );
     }
 
@@ -416,23 +415,20 @@ mod tx {
     impl Policy for ProbeToLedger {
         const NAME: &'static str = "probe-to-ledger";
         type Source = ProbeDomain;
-        type Target = crate::next::toys::Ledger;
+        type Target = crate::toys::Ledger;
 
         fn on_event(
             &self,
-            _: &crate::next::Any,
-            ctx: &crate::next::markup::PolicyContext,
-        ) -> Result<
-            Option<crate::next::markup::Commands<crate::next::toys::Ledger>>,
-            crate::next::markup::Report,
-        > {
-            let record = crate::next::toys::ledger::Record {
+            _: &crate::Any,
+            ctx: &crate::markup::PolicyContext,
+        ) -> Result<Option<crate::markup::Commands<crate::toys::Ledger>>, crate::markup::Report>
+        {
+            let record = crate::toys::ledger::Record {
                 source_sequence: ctx.trigger().sequence,
                 cents: 1,
             };
             Ok(Some(
-                crate::next::markup::Commands::none()
-                    .send(crate::next::toys::ledger_root(), &record),
+                crate::markup::Commands::none().send(crate::toys::ledger_root(), &record),
             ))
         }
     }
@@ -447,9 +443,9 @@ mod tx {
         registry.policy(Probing);
         registry.policy(ProbeToLedger);
         registry
-            .register::<crate::next::toys::Ledger>(
+            .register::<crate::toys::Ledger>(
                 Upcaster::new("u", "ledger"),
-                crate::next::toys::handlers::<crate::next::toys::Ledger>(),
+                crate::toys::handlers::<crate::toys::Ledger>(),
             )
             .unwrap();
         let log = MemoryDeadLetters::new();
@@ -462,7 +458,7 @@ mod tx {
             .handle::<Account, _, _>(&store, deposit(), &at(50), &mut ())
             .ready()
             .unwrap();
-        let probe = crate::next::v1::Cover {
+        let probe = crate::v1::Cover {
             domain: "probe".to_string(),
             root: Some(probe_root()),
             edition: None,
@@ -472,9 +468,9 @@ mod tx {
             2,
             "the probe step's two events"
         );
-        let ledger = crate::next::v1::Cover {
+        let ledger = crate::v1::Cover {
             domain: "ledger".to_string(),
-            root: Some(crate::next::toys::ledger_root()),
+            root: Some(crate::toys::ledger_root()),
             edition: None,
         };
         assert_eq!(
@@ -493,9 +489,9 @@ mod tx {
             .unwrap();
         assert!(matches!(
             &failure,
-            crate::next::Failure::Downstream {
+            crate::Failure::Downstream {
                 path,
-                error: crate::next::StepError::Kernel(crate::next::KernelError::ChainTooDeep {
+                error: crate::StepError::Kernel(crate::KernelError::ChainTooDeep {
                     limit: 1
                 }),
             } if path.len() == 2
@@ -513,9 +509,9 @@ mod tx {
 
     #[test]
     fn a_nonce_acknowledges_only_the_delivery_it_was_issued_for() {
-        use crate::next::coordinator::{steps::Coordinator, Deduplicated};
-        use crate::next::v1::ConflictResolution;
-        use crate::next::{check, Failure, KernelError};
+        use crate::coordinator::{steps::Coordinator, Deduplicated};
+        use crate::v1::ConflictResolution;
+        use crate::{check, Failure, KernelError};
 
         let registry = registry();
         let log = MemoryDeadLetters::new();

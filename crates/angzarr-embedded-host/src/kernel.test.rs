@@ -4,15 +4,15 @@
 //! the remote one.
 
 use angzarr_diagnostic::{Arg, Diagnostic};
-use angzarr_embedded::next::angzarr_router::error::CodedError;
-use angzarr_embedded::next::angzarr_router::policy::PolicyDispatch;
-use angzarr_embedded::next::angzarr_router::router::CommandHandler;
-use angzarr_embedded::next::v1::{
+use angzarr_embedded::angzarr_router::error::CodedError;
+use angzarr_embedded::angzarr_router::policy::PolicyDispatch;
+use angzarr_embedded::angzarr_router::router::CommandHandler;
+use angzarr_embedded::v1::{
     command_page, Command, CommandBook, CommandPage, ComponentDescriptor, ComponentKind,
     ConflictResolution, ContextualCommand, Cover, EventBook, EventPage, StateDescriptor,
     StateOptions, Uuid,
 };
-use angzarr_embedded::next::{
+use angzarr_embedded::{
     Any, EventStore, Failure, Handled, Kernel, KernelError, MemoryDeadLetters, Misconfigured,
     Recovery, Registry, Sampled, StreamRef, Timestamp, DEAD_LETTER_PREFIX,
 };
@@ -347,14 +347,14 @@ fn a_remote_internal_failure_under_its_own_code_is_a_dead_lettered_bug() {
     assert_eq!(letters[0].source_component, "player");
     assert_eq!(
         letters[0].source_component_kind(),
-        angzarr_embedded::next::v1::ComponentKind::Aggregate,
+        angzarr_embedded::v1::ComponentKind::Aggregate,
         "the child's kind, as its descriptor says"
     );
     assert_eq!(
         letters[0].rejection_details,
         Some(
-            angzarr_embedded::next::v1::angzarr_dead_letter::RejectionDetails::ProcessingFailed(
-                angzarr_embedded::next::v1::ProcessingFailedDetails {
+            angzarr_embedded::v1::angzarr_dead_letter::RejectionDetails::ProcessingFailed(
+                angzarr_embedded::v1::ProcessingFailedDetails {
                     failure: Some(reason),
                     ..Default::default()
                 }

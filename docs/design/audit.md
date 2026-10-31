@@ -1,6 +1,6 @@
 # The audited kernel on angzarr's proto types: design
 
-Status: **implemented** in `crates/angzarr-embedded/src/next/`, pinned by the tests
+Status: **implemented** in `crates/angzarr-embedded/src/`, pinned by the tests
 beside it (`*.test.rs`). It is angzarr-embedded's one kernel.
 
 The wire contract is angzarr's protos on angzarr-project's spec line
@@ -56,7 +56,7 @@ flowchart TB
     P --> AP
   end
   subgraph angzarr-embedded
-    K["angzarr_embedded::next<br/>(kernel: parse, coordinator, chain, upcaster, registry)"]
+    K["angzarr_embedded<br/>(kernel: parse, coordinator, chain, upcaster, registry)"]
   end
   AP --> K
   subgraph hatpick
@@ -79,13 +79,13 @@ flowchart TB
   deliberately: a mapping layer is a second home for every value, and every
   second home is a place for the two to disagree.
 - **annals-angzarr is folded into the kernel.** What it held that was more
-  than mapping lives on in `angzarr_embedded::next`: the `Payload` trait, `pack`,
+  than mapping lives on in `angzarr_embedded`: the `Payload` trait, `pack`,
   `type_name` and `Decoder`; the `Upcaster` (the in-process `UpcastPort`),
   for events and commands; the `Registry`, now also the
   mirror of `ComponentDescriptor.state`; and the golden replay fixtures. The
   opaque-row store adapter (`Opaque`, `Stored`) is gone: the store port
   itself is opaque now. The id helpers are angzarr-proto's own
-  (`angzarr_proto::ids`, re-exported as `angzarr_embedded::next::ids`). One crate, not
+  (`angzarr_proto::ids`, re-exported as `angzarr_embedded::ids`). One crate, not
   two, because with no mapping left the adapter would be a crate of
   re-exports.
 - **angzarr-embedded is the in-process runtime**, embedded in hatpick's server. Each
@@ -329,8 +329,8 @@ moves its position as `on_policy_bug` says. A fact is never refused: at the
 race re-run cap it is dead-lettered the same way and answered
 `Handled::Parked` (OK, PARKED, no events).
 
-Pinned by `next/concurrency.test.rs`, which forces the race with a barrier
-only the two first dispatches pass; by `next/races.test.rs`, whose
+Pinned by `src/concurrency.test.rs`, which forces the race with a barrier
+only the two first dispatches pass; by `src/races.test.rs`, whose
 business code lands the other write through the store while it decides
 (conflict_resolution.feature's C-0718, C-0719 and C-0722 to C-0726); and by
 the injected conflicts of `an_outside_callers_lost_race_*` and
@@ -435,7 +435,7 @@ message is its own snapshot form. `Registry::register::<D>` fills its entry
 from `D::State::descriptor()`, as angzarr's `registry.register::<D>()` fills
 `ComponentDescriptor.state`, and refuses a descriptor whose type URL is not
 the snapshot form's. angzarr's generator (backlog CR-1, CR-4) emits the impl;
-the test fixtures write it by hand (`src/next/toys.test.rs`).
+the test fixtures write it by hand (`src/toys.test.rs`).
 
 **The risk of COMMUTATIVE.** No structural diff sees a value derived from,
 or meaningful only together with, another unit: a total over items, two
@@ -480,7 +480,7 @@ their boxed twins, `DynCommandHandler` and the rest). Business code stays
 synchronous: an in-process handler answers at once, a remote child's call
 is awaited.
 
-**The routing seam** (`next::target`). The registry resolves a domain name
+**The routing seam** (the `target` module). The registry resolves a domain name
 to a `Target`: `Local`, the pipeline above over the kernel's store,
 through its handler (in this process or a child's); or `Remote`, a
 `CoordinatorPort`, a coordinator elsewhere that owns the domain's streams
@@ -580,7 +580,7 @@ was handed (the same when no rule applied).
 
 **Four classes of error, by gRPC status** (decision 14.37 and the owner's
 rulings of 2026-10-29), decided by the kernel itself in one place
-(`next::class`, decision 14.42; the router answers a status and a key and
+(`angzarr_embedded::class`, decision 14.42; the router answers a status and a key and
 never classifies):
 
 | Class | Statuses | What the kernel does |
@@ -852,7 +852,7 @@ version, not the policy's code. So:
 The store ports are angzarr-ports': ONE async trait set shared with
 angzarr, held to ONE conformance suite (`angzarr_ports::contract`), with
 `MemoryStore` (feature `memory`) and the shared SQLite adapter,
-angzarr-store-sqlite. angzarr-embedded has no store trait of its own; `angzarr_embedded::next`
+angzarr-store-sqlite. angzarr-embedded has no store trait of its own; `angzarr_embedded`
 re-exports the shared ones.
 
 ```rust
@@ -1293,7 +1293,7 @@ is the policy command's own causation, for tracing.
 ## The tests
 
 Beside the module each contract is about, in its `*.test.rs` under
-`crates/angzarr-embedded/src/next/`, over the toy domains in `toys.test.rs` and the
+`crates/angzarr-embedded/src/`, over the toy domains in `toys.test.rs` and the
 in-memory store (`angzarr_ports::MemoryStore`). The store's own contract is
 angzarr-ports' conformance suite, run by each adapter (angzarr-store-sqlite
 runs it in full); angzarr-embedded tests the kernel over it, not the store.

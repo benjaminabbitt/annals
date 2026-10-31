@@ -1,18 +1,18 @@
 #[allow(unused_imports)]
-use crate::next::toys::prelude::*;
+use crate::toys::prelude::*;
 mod dedup {
     //! Step 3: deduplication by `command_id` on the events, with its accepted
     //! costs. No claims, no fingerprints, no commands table.
-    use crate::next::toys::prelude::*;
-    use crate::next::v1::DeliveryOutcome;
-    use crate::next::{Failure, Handled, Payload};
+    use crate::toys::prelude::*;
+    use crate::v1::DeliveryOutcome;
+    use crate::{Failure, Handled, Payload};
 
-    use crate::next::toys::{
+    use crate::toys::{
         at, command, cover, fact, handle, opened, payloads, registry, AccountCmd, AccountEvent,
         AccountFact, Edit,
     };
 
-    fn deposit(n: u128, cents: i64) -> crate::next::v1::CommandBook {
+    fn deposit(n: u128, cents: i64) -> crate::v1::CommandBook {
         command(cover("account", 1), AccountCmd::Deposit(cents).to_any()).id(n)
     }
 
@@ -23,12 +23,10 @@ mod dedup {
         opened(&store, &registry, 1, 100);
 
         let first =
-            handle::<crate::next::toys::Account>(&store, &registry, deposit(3, 25), &at(20))
-                .unwrap();
+            handle::<crate::toys::Account>(&store, &registry, deposit(3, 25), &at(20)).unwrap();
         assert_eq!(first.outcome().delivery, DeliveryOutcome::Applied as i32);
         let retry =
-            handle::<crate::next::toys::Account>(&store, &registry, deposit(3, 25), &at(21))
-                .unwrap();
+            handle::<crate::toys::Account>(&store, &registry, deposit(3, 25), &at(21)).unwrap();
         assert_eq!(retry.outcome().delivery, DeliveryOutcome::Duplicate as i32);
         assert!(matches!(retry, Handled::Duplicate(_)));
         assert_eq!(
@@ -56,8 +54,7 @@ mod dedup {
 
         // A sweep of an empty account withdraws nothing: applied, no events.
         let sweep = || command(cover("account", 1), AccountCmd::Sweep.to_any()).id(7);
-        let first =
-            handle::<crate::next::toys::Account>(&store, &registry, sweep(), &at(20)).unwrap();
+        let first = handle::<crate::toys::Account>(&store, &registry, sweep(), &at(20)).unwrap();
         assert_eq!(first.outcome().delivery, DeliveryOutcome::Applied as i32);
         assert!(payloads::<AccountEvent>(&first.books()).is_empty());
 
@@ -67,9 +64,8 @@ mod dedup {
             AccountFact::PaymentReceived(50).to_any(),
             "pi_1",
         );
-        handle::<crate::next::toys::Account>(&store, &registry, payment, &at(21)).unwrap();
-        let again =
-            handle::<crate::next::toys::Account>(&store, &registry, sweep(), &at(22)).unwrap();
+        handle::<crate::toys::Account>(&store, &registry, payment, &at(21)).unwrap();
+        let again = handle::<crate::toys::Account>(&store, &registry, sweep(), &at(22)).unwrap();
         assert_eq!(
             again.outcome().delivery,
             DeliveryOutcome::Applied as i32,
@@ -88,14 +84,12 @@ mod dedup {
         let store = MemoryStore::new();
         let stream = cover("account", 1);
         let open = || command(stream.clone(), AccountCmd::Open.to_any()).id(5);
-        handle::<crate::next::toys::Account>(&store, &registry, open(), &at(20)).unwrap();
-        let retry =
-            handle::<crate::next::toys::Account>(&store, &registry, open(), &at(21)).unwrap();
+        handle::<crate::toys::Account>(&store, &registry, open(), &at(20)).unwrap();
+        let retry = handle::<crate::toys::Account>(&store, &registry, open(), &at(21)).unwrap();
         assert_eq!(retry.outcome().delivery, DeliveryOutcome::Duplicate as i32);
 
         assert_eq!(store.purge(sref(&stream), 1).ready(), Ok(1));
-        let again =
-            handle::<crate::next::toys::Account>(&store, &registry, open(), &at(22)).unwrap();
+        let again = handle::<crate::toys::Account>(&store, &registry, open(), &at(22)).unwrap();
         assert_eq!(
             again.outcome().delivery,
             DeliveryOutcome::Applied as i32,
@@ -116,10 +110,9 @@ mod dedup {
         let store = MemoryStore::new();
         opened(&store, &registry, 1, 100);
 
-        handle::<crate::next::toys::Account>(&store, &registry, deposit(3, 25), &at(20)).unwrap();
+        handle::<crate::toys::Account>(&store, &registry, deposit(3, 25), &at(20)).unwrap();
         let reused =
-            handle::<crate::next::toys::Account>(&store, &registry, deposit(3, 999), &at(21))
-                .unwrap();
+            handle::<crate::toys::Account>(&store, &registry, deposit(3, 999), &at(21)).unwrap();
         assert_eq!(
             reused.outcome().delivery,
             DeliveryOutcome::Duplicate as i32,
@@ -138,10 +131,9 @@ mod dedup {
         opened(&store, &registry, 1, 100);
         opened(&store, &registry, 2, 100);
 
-        handle::<crate::next::toys::Account>(&store, &registry, deposit(3, 25), &at(20)).unwrap();
+        handle::<crate::toys::Account>(&store, &registry, deposit(3, 25), &at(20)).unwrap();
         let other = command(cover("account", 2), AccountCmd::Deposit(25).to_any()).id(3);
-        let applied =
-            handle::<crate::next::toys::Account>(&store, &registry, other, &at(21)).unwrap();
+        let applied = handle::<crate::toys::Account>(&store, &registry, other, &at(21)).unwrap();
         assert_eq!(applied.outcome().delivery, DeliveryOutcome::Applied as i32);
     }
 
@@ -158,15 +150,14 @@ mod dedup {
             )
         };
 
-        handle::<crate::next::toys::Account>(&store, &registry, payment(), &at(20)).unwrap();
-        let again =
-            handle::<crate::next::toys::Account>(&store, &registry, payment(), &at(21)).unwrap();
+        handle::<crate::toys::Account>(&store, &registry, payment(), &at(20)).unwrap();
+        let again = handle::<crate::toys::Account>(&store, &registry, payment(), &at(21)).unwrap();
         assert_eq!(again.outcome().delivery, DeliveryOutcome::Duplicate as i32);
         let meta = again.books()[0].pages[0].meta.clone().unwrap();
         assert_eq!(
             meta.causation,
-            Some(crate::next::v1::event_meta::Causation::CommandId(
-                crate::next::ids::fact_command_id("pi_1234")
+            Some(crate::v1::event_meta::Causation::CommandId(
+                crate::ids::fact_command_id("pi_1234")
             )),
             "the id is on the event, where the lookup finds it"
         );
@@ -178,7 +169,7 @@ mod dedup {
         let store = MemoryStore::new();
         let early = || command(cover("account", 1), AccountCmd::Deposit(5).to_any()).id(4);
 
-        let refused = handle::<crate::next::toys::Account>(&store, &registry, early(), &at(5));
+        let refused = handle::<crate::toys::Account>(&store, &registry, early(), &at(5));
         assert!(matches!(
             refused,
             Err(Failure::Rejected(r)) if angzarr_diagnostic::Diagnostic::code(r.report()) == "toy-account-not-open"
@@ -186,8 +177,7 @@ mod dedup {
         assert!(streams(&store).is_empty());
 
         opened(&store, &registry, 1, 0);
-        let retried =
-            handle::<crate::next::toys::Account>(&store, &registry, early(), &at(20)).unwrap();
+        let retried = handle::<crate::toys::Account>(&store, &registry, early(), &at(20)).unwrap();
         assert_eq!(retried.outcome().delivery, DeliveryOutcome::Applied as i32);
     }
 
@@ -208,20 +198,20 @@ mod dedup {
         }
     }
 
-    impl crate::next::EventStore for CommitLandsAfterFirstRead {
+    impl crate::EventStore for CommitLandsAfterFirstRead {
         async fn write(
             &self,
-            write: crate::next::Write<'_>,
-        ) -> Result<crate::next::Written, crate::next::StoreError> {
+            write: crate::Write<'_>,
+        ) -> Result<crate::Written, crate::StoreError> {
             self.store.write(write).await
         }
 
         async fn read(
             &self,
-            stream: crate::next::StreamRef<'_>,
+            stream: crate::StreamRef<'_>,
             from: u64,
             to: Option<u64>,
-        ) -> Result<crate::next::Slice, crate::next::StoreError> {
+        ) -> Result<crate::Slice, crate::StoreError> {
             let early = self.first_read();
             let mut slice = self.store.read(stream, from, to).await?;
             if early {
@@ -233,9 +223,9 @@ mod dedup {
 
         async fn find_command(
             &self,
-            stream: crate::next::StreamRef<'_>,
+            stream: crate::StreamRef<'_>,
             command_id: angzarr_ports::Uuid,
-        ) -> Result<Vec<crate::next::v1::EventPage>, crate::next::StoreError> {
+        ) -> Result<Vec<crate::v1::EventPage>, crate::StoreError> {
             let early = self.first_read();
             let mut pages = self.store.find_command(stream, command_id).await?;
             if early {
@@ -244,36 +234,30 @@ mod dedup {
             Ok(pages)
         }
 
-        async fn covers(
-            &self,
-            domain: &str,
-        ) -> Result<Vec<crate::next::v1::Cover>, crate::next::StoreError> {
+        async fn covers(&self, domain: &str) -> Result<Vec<crate::v1::Cover>, crate::StoreError> {
             self.store.covers(domain).await
         }
     }
 
-    impl crate::next::SnapshotStore for CommitLandsAfterFirstRead {
+    impl crate::SnapshotStore for CommitLandsAfterFirstRead {
         async fn read_snapshot(
             &self,
-            stream: crate::next::StreamRef<'_>,
-        ) -> Result<Option<crate::next::v1::Snapshot>, crate::next::StoreError> {
+            stream: crate::StreamRef<'_>,
+        ) -> Result<Option<crate::v1::Snapshot>, crate::StoreError> {
             self.store.read_snapshot(stream).await
         }
 
         async fn write_snapshot(
             &self,
-            stream: crate::next::StreamRef<'_>,
-            snapshot: &crate::next::v1::Snapshot,
-        ) -> Result<(), crate::next::StoreError> {
+            stream: crate::StreamRef<'_>,
+            snapshot: &crate::v1::Snapshot,
+        ) -> Result<(), crate::StoreError> {
             self.store.write_snapshot(stream, snapshot).await
         }
     }
 
-    impl crate::next::PositionStore for CommitLandsAfterFirstRead {
-        async fn position(
-            &self,
-            key: crate::next::PositionKey<'_>,
-        ) -> Result<u64, crate::next::StoreError> {
+    impl crate::PositionStore for CommitLandsAfterFirstRead {
+        async fn position(&self, key: crate::PositionKey<'_>) -> Result<u64, crate::StoreError> {
             self.store.position(key).await
         }
     }
@@ -288,17 +272,17 @@ mod dedup {
         let store = MemoryStore::new();
         opened(&store, &registry, 1, 100);
         let before = pages(&store, &cover("account", 1)).len() as u64;
-        handle::<crate::next::toys::Account>(&store, &registry, deposit(3, 25), &at(20)).unwrap();
+        handle::<crate::toys::Account>(&store, &registry, deposit(3, 25), &at(20)).unwrap();
 
-        let log = crate::next::MemoryDeadLetters::new();
-        let kernel = crate::next::Kernel::new(&registry, &log);
+        let log = crate::MemoryDeadLetters::new();
+        let kernel = crate::Kernel::new(&registry, &log);
         let racing = CommitLandsAfterFirstRead {
             store: store.clone(),
             before,
             seen: std::sync::atomic::AtomicBool::new(false),
         };
         let retry = kernel
-            .handle::<crate::next::toys::Account, _, _>(&racing, deposit(3, 25), &at(21), &mut ())
+            .handle::<crate::toys::Account, _, _>(&racing, deposit(3, 25), &at(21), &mut ())
             .ready()
             .unwrap();
         assert!(
@@ -315,17 +299,17 @@ mod pipeline {
     //! resolve → decode (and upcast) → decide or ingest. Each test pins one
     //! boundary by sending something that two adjacent steps would answer
     //! differently.
-    use crate::next::toys::prelude::*;
+    use crate::toys::prelude::*;
 
     use super::super::{steps::Coordinator, Deduplicated};
-    use crate::next::v1::{ConflictResolution, DeliveryOutcome, EventRef};
-    use crate::next::{check, pack, Failure, KernelError, Malformed, Payload, Recovery};
+    use crate::v1::{ConflictResolution, DeliveryOutcome, EventRef};
+    use crate::{check, pack, Failure, KernelError, Malformed, Payload, Recovery};
 
-    use crate::next::toys::{
+    use crate::toys::{
         account, at, command, cover, handle, opened, registry, Account, AccountCmd, Edit,
     };
 
-    fn deposit(n: u128) -> crate::next::v1::CommandBook {
+    fn deposit(n: u128) -> crate::v1::CommandBook {
         command(cover("account", 1), AccountCmd::Deposit(5).to_any()).id(n)
     }
 
@@ -470,7 +454,7 @@ mod pipeline {
 
     #[test]
     fn the_coordinator_hands_a_windowed_command_its_window_and_a_nonce() {
-        use crate::next::toys::{set, Shelf};
+        use crate::toys::{set, Shelf};
         let registry = registry();
         let store = MemoryStore::new();
         for (n, item) in ["a", "b", "c"].into_iter().enumerate() {
@@ -490,10 +474,7 @@ mod pipeline {
         let Deduplicated::Novel(novel) = coordinator.deduplicate(identified).unwrap() else {
             panic!("never applied");
         };
-        assert_eq!(
-            novel.command().command_id(),
-            &crate::next::toys::command_id(9)
-        );
+        assert_eq!(novel.command().command_id(), &crate::toys::command_id(9));
         assert_eq!(novel.head(), 3);
         let contextual = coordinator.load(novel).unwrap();
         assert_eq!(
@@ -516,14 +497,14 @@ mod pipeline {
         assert!(contextual.snapshot().is_none());
         assert_eq!(
             contextual.command().command_id(),
-            &crate::next::toys::command_id(9)
+            &crate::toys::command_id(9)
         );
     }
 
     #[test]
     fn the_coordinators_decision_commits_to_its_stream() {
         let registry = registry();
-        let log = crate::next::MemoryDeadLetters::new();
+        let log = crate::MemoryDeadLetters::new();
         let store = MemoryStore::new();
         opened(&store, &registry, 1, 100);
         let mut coordinator = Coordinator::new(&store, &registry);
@@ -536,10 +517,7 @@ mod pipeline {
             .unwrap()
             .decode::<Account>(&registry)
             .unwrap();
-        assert_eq!(
-            prepared.command().command_id(),
-            &crate::next::toys::command_id(3)
-        );
+        assert_eq!(prepared.command().command_id(), &crate::toys::command_id(3));
         let pages = prepared.decide(&at(30), &registry, &log).unwrap();
         assert_eq!(pages.len(), 1);
         assert_eq!(pages[0].sequence, 2, "at the head");
@@ -576,9 +554,9 @@ mod pipeline {
             wrong
                 .load(novel)
                 .unwrap()
-                .decode::<crate::next::toys::Ledger>(&registry)
+                .decode::<crate::toys::Ledger>(&registry)
                 .err(),
-            Some(KernelError::Replay(crate::next::ReplayError::WrongDomain {
+            Some(KernelError::Replay(crate::ReplayError::WrongDomain {
                 found: "account".to_string(),
                 expected: "ledger"
             }))
@@ -590,13 +568,13 @@ mod snapshot {
     //! Snapshots: a framework optimisation, never business data. Used only
     //! under the current rules version and state type, and never one that
     //! hides part of a conflict window.
-    use crate::next::toys::prelude::*;
+    use crate::toys::prelude::*;
 
     use super::super::{steps::Coordinator, Deduplicated};
-    use crate::next::v1::{ConflictResolution, Snapshot};
-    use crate::next::{check, pack, Payload, Stream};
+    use crate::v1::{ConflictResolution, Snapshot};
+    use crate::{check, pack, Payload, Stream};
 
-    use crate::next::toys::{
+    use crate::toys::{
         account, at, command, cover, opened, registry, root, set, shelf, Account, AccountCmd, Edit,
         Shelf,
     };
@@ -710,7 +688,7 @@ mod snapshot {
     /// it, and every later command on it would fail.
     #[test]
     fn a_snapshot_at_or_past_the_head_is_not_used() {
-        use crate::next::toys::handle;
+        use crate::toys::handle;
         let registry = registry();
         for sequence in [2, 5] {
             let store = MemoryStore::new();
@@ -744,7 +722,7 @@ mod snapshot {
     /// events writes none.
     #[test]
     fn the_state_a_command_returns_is_written_as_the_snapshot() {
-        use crate::next::toys::handle;
+        use crate::toys::handle;
         let registry = registry();
         let store = MemoryStore::new();
         let stream = cover("account", 1);
@@ -789,7 +767,7 @@ mod snapshot {
     fn a_stream_snapshots_under_the_current_rules_version() {
         let registry = registry();
         let mut stream = Stream::<Shelf>::new(root(3), None).unwrap();
-        let log = crate::next::MemoryDeadLetters::new();
+        let log = crate::MemoryDeadLetters::new();
         stream
             .execute(
                 command(cover("shelf", 3), set("a", 1)),
@@ -815,13 +793,13 @@ mod snapshot {
     }
 
     /// Ledger 1 after recording `cents`, executed in memory.
-    fn recorded(cents: i64) -> Stream<crate::next::toys::Ledger> {
-        use crate::next::MemoryDeadLetters;
+    fn recorded(cents: i64) -> Stream<crate::toys::Ledger> {
+        use crate::MemoryDeadLetters;
         let registry = registry();
-        let mut stream = Stream::<crate::next::toys::Ledger>::new(root(1), None).unwrap();
+        let mut stream = Stream::<crate::toys::Ledger>::new(root(1), None).unwrap();
         let book = command(
             cover("ledger", 1),
-            crate::next::toys::ledger::Record {
+            crate::toys::ledger::Record {
                 source_sequence: 0,
                 cents,
             }
@@ -850,7 +828,7 @@ mod snapshot {
             snapshot.state.as_ref().unwrap().type_url,
             "/toy.ledger.v1.LedgerSnapshot"
         );
-        let resumed = Stream::<crate::next::toys::Ledger>::resume(
+        let resumed = Stream::<crate::toys::Ledger>::resume(
             cover("ledger", 1),
             &snapshot,
             None,
@@ -864,17 +842,17 @@ mod snapshot {
 
     #[test]
     fn a_snapshot_whose_wire_form_is_not_a_valid_state_is_unreadable() {
-        use crate::next::KernelError;
+        use crate::KernelError;
         use angzarr_diagnostic::Diagnostic;
         let snapshot = Snapshot {
             sequence: 0,
-            state: Some(pack(&crate::next::toys::ledger::LedgerSnapshot {
+            state: Some(pack(&crate::toys::ledger::LedgerSnapshot {
                 next_source: 1,
                 total: -5,
             })),
             rules_version: "v1".to_string(),
         };
-        let error = Stream::<crate::next::toys::Ledger>::resume(
+        let error = Stream::<crate::toys::Ledger>::resume(
             cover("ledger", 1),
             &snapshot,
             None,
@@ -896,20 +874,20 @@ mod upcasting {
     //! current type only.
     use std::sync::{Arc, Mutex};
 
-    use crate::next::angzarr_router::error::CodedError;
-    use crate::next::angzarr_router::pb;
-    use crate::next::angzarr_router::router::CommandHandler;
-    use crate::next::toys::prelude::*;
-    use crate::next::toys::{
+    use crate::angzarr_router::error::CodedError;
+    use crate::angzarr_router::pb;
+    use crate::angzarr_router::router::CommandHandler;
+    use crate::toys::prelude::*;
+    use crate::toys::{
         account, account_upcaster, at, command, cover, handlers, payloads, Account, AccountCmd,
         AccountEvent, Edit,
     };
-    use crate::next::{pack, Failure, KernelError, Payload, Registry, Upcaster};
+    use crate::{pack, Failure, KernelError, Payload, Registry, Upcaster};
 
     /// The account's router table with no upcaster of its own, recording
     /// the type of every command it is handed.
     pub(crate) struct Seen {
-        inner: Box<dyn crate::next::angzarr_router::router::DynCommandHandler>,
+        inner: Box<dyn crate::angzarr_router::router::DynCommandHandler>,
         seen: Arc<Mutex<Vec<String>>>,
     }
 
@@ -943,8 +921,7 @@ mod upcasting {
     /// A registry whose account is [`Seen`], upcast through `upcaster`.
     fn seen_account(upcaster: Upcaster) -> (Registry, Arc<Mutex<Vec<String>>>) {
         let seen = Arc::new(Mutex::new(Vec::new()));
-        let table =
-            crate::next::route::table::<Account>(Arc::new(account::AccountState::default), false);
+        let table = crate::route::table::<Account>(Arc::new(account::AccountState::default), false);
         let inner = handlers::<Account>()(table);
         let mut registry = Registry::new();
         registry
@@ -954,8 +931,8 @@ mod upcasting {
                     inner: Box::new(inner),
                     seen: Arc::clone(&seen),
                 },
-                crate::next::toys::descriptor_of::<Account>(
-                    crate::next::v1::ComponentKind::Aggregate,
+                crate::toys::descriptor_of::<Account>(
+                    crate::v1::ComponentKind::Aggregate,
                     "v2",
                     &[],
                 ),
@@ -968,12 +945,12 @@ mod upcasting {
     fn any(
         store: &MemoryStore,
         registry: &Registry,
-        book: crate::next::v1::CommandBook,
+        book: crate::v1::CommandBook,
         seconds: i64,
-    ) -> Result<crate::next::Handled, Failure<crate::next::Rejected>> {
-        let log = crate::next::MemoryDeadLetters::new();
-        crate::next::Kernel::new(registry, &log)
-            .on_retryable(crate::next::toys::no_retries())
+    ) -> Result<crate::Handled, Failure<crate::Rejected>> {
+        let log = crate::MemoryDeadLetters::new();
+        crate::Kernel::new(registry, &log)
+            .on_retryable(crate::toys::no_retries())
             .handle_any(store, book, &at(seconds), &mut ())
             .ready()
     }
@@ -1009,19 +986,17 @@ mod upcasting {
     /// An upcaster sidecar that is down (decision 14.39, C-0681).
     struct Down;
 
-    impl crate::next::UpcastPort for Down {
+    impl crate::UpcastPort for Down {
         fn upcast<'a>(
             &'a self,
-            _: &'a crate::next::v1::UpcastRequest,
-        ) -> crate::next::angzarr_router::send::BoxFuture<
+            _: &'a crate::v1::UpcastRequest,
+        ) -> crate::angzarr_router::send::BoxFuture<
             'a,
-            Result<crate::next::v1::UpcastResponse, crate::next::UpcastError>,
+            Result<crate::v1::UpcastResponse, crate::UpcastError>,
         > {
-            Box::pin(std::future::ready(Err(
-                crate::next::UpcastError::Unavailable {
-                    cause: angzarr_diagnostic::Report::new("toy-sidecar-down"),
-                },
-            )))
+            Box::pin(std::future::ready(Err(crate::UpcastError::Unavailable {
+                cause: angzarr_diagnostic::Report::new("toy-sidecar-down"),
+            })))
         }
     }
 
@@ -1038,13 +1013,13 @@ mod upcasting {
             matches!(
                 &failure,
                 Failure::Kernel(KernelError::Upcast {
-                    error: crate::next::UpcastError::Unavailable { .. },
+                    error: crate::UpcastError::Unavailable { .. },
                     ..
                 })
             ),
             "{failure:?}"
         );
-        assert_eq!(failure.recovery(), crate::next::Recovery::Retry);
+        assert_eq!(failure.recovery(), crate::Recovery::Retry);
         assert!(seen.lock().unwrap().is_empty(), "nothing delivered");
         assert!(pages(&store, &cover("account", 1)).is_empty());
     }
@@ -1095,7 +1070,7 @@ mod upcasting {
     /// The account's router table with no upcaster of its own, recording
     /// the type of every stored event it is handed.
     struct History {
-        inner: Box<dyn crate::next::angzarr_router::router::DynCommandHandler>,
+        inner: Box<dyn crate::angzarr_router::router::DynCommandHandler>,
         seen: Arc<Mutex<Vec<String>>>,
     }
 
@@ -1124,8 +1099,7 @@ mod upcasting {
     /// `upcaster` as its sidecar; beside it the ledger.
     fn handled_account(upcaster: Upcaster) -> (Registry, Arc<Mutex<Vec<String>>>) {
         let seen = Arc::new(Mutex::new(Vec::new()));
-        let table =
-            crate::next::route::table::<Account>(Arc::new(account::AccountState::default), false);
+        let table = crate::route::table::<Account>(Arc::new(account::AccountState::default), false);
         let inner = handlers::<Account>()(table);
         let mut registry = Registry::new();
         registry
@@ -1135,17 +1109,17 @@ mod upcasting {
                     inner: Box::new(inner),
                     seen: Arc::clone(&seen),
                 },
-                crate::next::toys::descriptor_of::<Account>(
-                    crate::next::v1::ComponentKind::Aggregate,
+                crate::toys::descriptor_of::<Account>(
+                    crate::v1::ComponentKind::Aggregate,
                     "v2",
                     &[],
                 ),
             )
             .unwrap();
         registry.upcast_with("account", upcaster);
-        crate::next::toys::register::<crate::next::toys::Ledger>(
+        crate::toys::register::<crate::toys::Ledger>(
             &mut registry,
-            crate::next::Upcaster::new("ledger-upcaster", "ledger"),
+            crate::Upcaster::new("ledger-upcaster", "ledger"),
         )
         .unwrap();
         (registry, seen)
@@ -1154,15 +1128,15 @@ mod upcasting {
     /// Account 1 as an older build wrote it: opened, then 2 euros credited
     /// under the old event type.
     fn old_history(store: &MemoryStore) {
-        use crate::next::v1::{event_meta::Causation, EventMeta, EventPage};
+        use crate::v1::{event_meta::Causation, EventMeta, EventPage};
         let page = |sequence: u64, payload| EventPage {
             payload: Some(payload),
             meta: Some(EventMeta {
-                causation: Some(Causation::CommandId(crate::next::toys::command_id(
+                causation: Some(Causation::CommandId(crate::toys::command_id(
                     u128::from(sequence) + 1,
                 ))),
-                correlation_id: Some(crate::next::toys::command_id(u128::from(sequence) + 1)),
-                recorded_at: Some(crate::next::toys::instant(sequence as i64)),
+                correlation_id: Some(crate::toys::command_id(u128::from(sequence) + 1)),
+                recorded_at: Some(crate::toys::instant(sequence as i64)),
                 rules_version: "v2".to_string(),
                 ..EventMeta::default()
             }),
@@ -1206,18 +1180,18 @@ mod upcasting {
     /// handler (C-0586).
     #[test]
     fn a_policy_reads_a_handlers_stored_events_as_the_current_types() {
-        use crate::next::toys::{ledger, ledger_root, no_retries, Bookkeeping};
+        use crate::toys::{ledger, ledger_root, no_retries, Bookkeeping};
         let (mut registry, _) = handled_account(account_upcaster());
         registry.policy(Bookkeeping);
         let store = MemoryStore::new();
         old_history(&store);
-        let log = crate::next::MemoryDeadLetters::new();
-        crate::next::Kernel::new(&registry, &log)
+        let log = crate::MemoryDeadLetters::new();
+        crate::Kernel::new(&registry, &log)
             .on_retryable(no_retries())
             .resume(&store, &at(30), &mut ())
             .ready()
             .unwrap();
-        let ledger = crate::next::v1::Cover {
+        let ledger = crate::v1::Cover {
             domain: "ledger".to_string(),
             root: Some(ledger_root()),
             edition: None,
@@ -1244,20 +1218,20 @@ mod admission {
 
     use angzarr_diagnostic::Diagnostic;
 
-    use crate::next::angzarr_router::error::CodedError;
-    use crate::next::angzarr_router::pb;
-    use crate::next::angzarr_router::router::CommandHandler;
-    use crate::next::toys::prelude::*;
-    use crate::next::toys::{
+    use crate::angzarr_router::error::CodedError;
+    use crate::angzarr_router::pb;
+    use crate::angzarr_router::router::CommandHandler;
+    use crate::toys::prelude::*;
+    use crate::toys::{
         at, command, cover, fact, handlers, payloads, Account, AccountCmd, AccountEvent,
         AccountFact, Edit,
     };
-    use crate::next::v1::DeliveryOutcome;
-    use crate::next::{Failure, Handled, Payload, Registry};
+    use crate::v1::DeliveryOutcome;
+    use crate::{Failure, Handled, Payload, Registry};
 
     /// The account's table, as a process manager: its descriptor (in
     /// [`registry`]) has it started only by `Open`.
-    struct AsProcessManager(Box<dyn crate::next::angzarr_router::router::DynCommandHandler>);
+    struct AsProcessManager(Box<dyn crate::angzarr_router::router::DynCommandHandler>);
 
     impl CommandHandler for AsProcessManager {
         fn name(&self) -> &str {
@@ -1278,8 +1252,8 @@ mod admission {
     }
 
     fn registry() -> Registry {
-        let table = crate::next::route::table::<Account>(
-            Arc::new(crate::next::toys::account::AccountState::default),
+        let table = crate::route::table::<Account>(
+            Arc::new(crate::toys::account::AccountState::default),
             true,
         );
         let inner = handlers::<Account>()(table);
@@ -1288,7 +1262,7 @@ mod admission {
             .command_handler(
                 "account",
                 AsProcessManager(Box::new(inner)),
-                crate::next::toys::descriptor_of::<Account>(
+                crate::toys::descriptor_of::<Account>(
                     pb::ComponentKind::ProcessManager,
                     "v2",
                     &["toy.account.cmd.v1.Open"],
@@ -1301,12 +1275,12 @@ mod admission {
     fn any(
         store: &MemoryStore,
         registry: &Registry,
-        book: crate::next::v1::CommandBook,
+        book: crate::v1::CommandBook,
         seconds: i64,
-    ) -> Result<Handled, Failure<crate::next::Rejected>> {
-        let log = crate::next::MemoryDeadLetters::new();
-        crate::next::Kernel::new(registry, &log)
-            .on_retryable(crate::next::toys::no_retries())
+    ) -> Result<Handled, Failure<crate::Rejected>> {
+        let log = crate::MemoryDeadLetters::new();
+        crate::Kernel::new(registry, &log)
+            .on_retryable(crate::toys::no_retries())
             .handle_any(store, book, &at(seconds), &mut ())
             .ready()
     }
@@ -1355,23 +1329,23 @@ mod admission {
 
     /// A refusal fact `paid` for account 1 whose causation names `trigger`'s
     /// stream, as the chain builds one.
-    fn refusal_fact(registry: &Registry, trigger: u128) -> crate::next::Identified {
-        use crate::next::toys::{command_id, correlation};
+    fn refusal_fact(registry: &Registry, trigger: u128) -> crate::Identified {
+        use crate::toys::{command_id, correlation};
         let book = fact(
             cover("account", 1),
             AccountFact::PaymentReceived(5).to_any(),
             "refused",
         );
         let mut book = book;
-        book.page.as_mut().unwrap().fact_origin = Some(crate::next::v1::FactOrigin {
+        book.page.as_mut().unwrap().fact_origin = Some(crate::v1::FactOrigin {
             external_id: command_id(9).to_string(),
             description: "refused".to_string(),
         });
-        let trigger = crate::next::v1::EventRef {
+        let trigger = crate::v1::EventRef {
             stream: Some(cover("account", trigger)),
             sequence: 0,
         };
-        crate::next::check::check_refusal(book, registry, trigger, correlation(1), command_id(9))
+        crate::check::check_refusal(book, registry, trigger, correlation(1), command_id(9))
             .unwrap()
             .identify(&at(1))
     }
@@ -1393,7 +1367,7 @@ mod admission {
         assert!(
             matches!(
                 &refused,
-                Failure::Kernel(crate::next::KernelError::Router(e))
+                Failure::Kernel(crate::KernelError::Router(e))
                     if e.code == "COORDINATOR_REASON_REFUSAL_FACT_WRONG_STREAM"
                         && e.extras.get("domain").map(String::as_str) == Some("account")
             ),
@@ -1404,11 +1378,11 @@ mod admission {
     #[test]
     fn a_start_rule_on_a_payload_that_did_not_upcast_is_the_upcasts_failure() {
         use super::super::{admit, Admitted};
-        use crate::next::{check, KernelError, UpcastError};
+        use crate::{check, KernelError, UpcastError};
         let registry = registry();
         let deposit = command(cover("account", 1), AccountCmd::Deposit(5).to_any()).id(2);
         let identified = check(deposit, &registry).unwrap().identify(&at(1));
-        let failed: Result<crate::next::Any, UpcastError> = Err(UpcastError::Rule {
+        let failed: Result<crate::Any, UpcastError> = Err(UpcastError::Rule {
             source: "toy.account.cmd.v1.Deposit".to_string(),
             error: angzarr_diagnostic::Report::new("toy-broken"),
         });
@@ -1425,7 +1399,7 @@ mod admission {
             Admitted::Dispatch
         );
         // An aggregate has no start rule.
-        let aggregate = crate::next::toys::registry();
+        let aggregate = crate::toys::registry();
         let identified = check(
             command(cover("account", 1), AccountCmd::Deposit(5).to_any()).id(2),
             &aggregate,
@@ -1443,11 +1417,11 @@ mod rules_version {
     //! The rules version an answer reports (command_handler.proto,
     //! `CommandHandlerResponse.rules_version`): stamped in full, and refused
     //! as a handler bug when it is not the registered one (C-0558).
-    use crate::next::angzarr_router::error::CodedError;
-    use crate::next::angzarr_router::pb;
-    use crate::next::toys::prelude::*;
-    use crate::next::toys::{at, command, cover, Edit};
-    use crate::next::{Failure, Recovery, Registry};
+    use crate::angzarr_router::error::CodedError;
+    use crate::angzarr_router::pb;
+    use crate::toys::prelude::*;
+    use crate::toys::{at, command, cover, Edit};
+    use crate::{Failure, Recovery, Registry};
 
     /// A hand-written handler answering every command with one event,
     /// reporting `reported`.
@@ -1455,7 +1429,7 @@ mod rules_version {
         reported: &'static str,
     }
 
-    impl crate::next::angzarr_router::router::CommandHandler for Reporting {
+    impl crate::angzarr_router::router::CommandHandler for Reporting {
         fn name(&self) -> &str {
             "order"
         }
@@ -1472,7 +1446,7 @@ mod rules_version {
                 conflict: None,
                 events: Some(pb::EventBook {
                     pages: vec![pb::EventPage {
-                        payload: Some(crate::next::Any {
+                        payload: Some(crate::Any {
                             type_url: "/orders.v1.ItemAdded".to_string(),
                             value: Vec::new(),
                         }),
@@ -1512,10 +1486,10 @@ mod rules_version {
         registry
     }
 
-    fn add_item() -> crate::next::v1::CommandBook {
+    fn add_item() -> crate::v1::CommandBook {
         command(
             cover("order", 1),
-            crate::next::Any {
+            crate::Any {
                 type_url: "/orders.v1.AddItem".to_string(),
                 value: Vec::new(),
             },
@@ -1528,8 +1502,8 @@ mod rules_version {
     fn every_event_records_the_reported_version_in_full() {
         let registry = order("1.4.2+build.7");
         let store = MemoryStore::new();
-        let log = crate::next::MemoryDeadLetters::new();
-        crate::next::Kernel::new(&registry, &log)
+        let log = crate::MemoryDeadLetters::new();
+        crate::Kernel::new(&registry, &log)
             .handle_any(&store, add_item(), &at(10), &mut ())
             .ready()
             .expect("applied");
@@ -1548,8 +1522,8 @@ mod rules_version {
         for reported in ["1.5.0+build.9", "1.4.2+build.8", ""] {
             let registry = order(reported);
             let store = MemoryStore::new();
-            let log = crate::next::MemoryDeadLetters::new();
-            let failure = crate::next::Kernel::new(&registry, &log)
+            let log = crate::MemoryDeadLetters::new();
+            let failure = crate::Kernel::new(&registry, &log)
                 .handle_any(&store, add_item(), &at(10), &mut ())
                 .ready()
                 .err()
@@ -1560,10 +1534,7 @@ mod rules_version {
             };
             let coded = error.as_coded().expect("a spec key");
             assert_eq!(coded.code, "HOST_REASON_DESCRIPTOR_RULES_VERSION_MISMATCH");
-            assert_eq!(
-                coded.grpc,
-                crate::next::angzarr_router::error::GrpcCode::Internal
-            );
+            assert_eq!(coded.grpc, crate::angzarr_router::error::GrpcCode::Internal);
             assert_eq!(
                 coded.extras.get("described").map(String::as_str),
                 Some("1.4.2+build.7")

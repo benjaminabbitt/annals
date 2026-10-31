@@ -482,11 +482,11 @@ fn parse(
 /// its trigger names exactly that stream. Any other payload is.
 fn refusal_addressed(payload: &Any, cover: &Cover) -> bool {
     use prost::Message;
-    let refused = <crate::next::markup::v1::CommandRefused as prost::Name>::full_name();
-    if crate::next::payload::type_name(&payload.type_url) != refused {
+    let refused = <crate::markup::v1::CommandRefused as prost::Name>::full_name();
+    if crate::payload::type_name(&payload.type_url) != refused {
         return true;
     }
-    crate::next::markup::v1::CommandRefused::decode(&payload.value[..])
+    crate::markup::v1::CommandRefused::decode(&payload.value[..])
         .ok()
         .and_then(|refusal| refusal.trigger)
         .and_then(|trigger| trigger.stream)

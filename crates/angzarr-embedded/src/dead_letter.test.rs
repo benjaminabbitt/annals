@@ -1,14 +1,14 @@
 //! angzarr-embedded's dead-letter queue is a logger whose every line warns that it
 //! almost certainly indicates a problem.
 use super::{Cause, Component};
-use crate::next::toys::prelude::*;
-use crate::next::v1::{angzarr_dead_letter, AngzarrDeadLetter, ComponentKind, Diagnostic};
-use crate::next::{
+use crate::toys::prelude::*;
+use crate::v1::{angzarr_dead_letter, AngzarrDeadLetter, ComponentKind, Diagnostic};
+use crate::{
     check, dead_letter_line, pack, DeadLetterLog, Failure, Kernel, KernelError, MemoryDeadLetters,
     DEAD_LETTER_PREFIX,
 };
 
-use crate::next::toys::{account, at, command, cover, fact, registry, Account, Edit};
+use crate::toys::{account, at, command, cover, fact, registry, Account, Edit};
 
 #[test]
 fn a_dead_letter_line_starts_with_the_warning_and_names_the_command() {
@@ -55,7 +55,7 @@ fn a_dead_letter_line_starts_with_the_warning_and_names_the_command() {
         "{line}"
     );
     assert!(
-        line.contains(&crate::next::toys::command_id(5).to_string()),
+        line.contains(&crate::toys::command_id(5).to_string()),
         "the command id, as display text: {line}"
     );
 
@@ -90,16 +90,16 @@ fn a_dead_letter_line_starts_with_the_warning_and_names_the_command() {
 /// its `EditionDeleted`, as failed events do.
 #[test]
 fn an_edition_removals_line_names_its_stream_and_sequence() {
-    use crate::next::v1::EventPage;
+    use crate::v1::EventPage;
     let letter = AngzarrDeadLetter {
         payload: Some(angzarr_dead_letter::Payload::FailedEditionRemoval(
-            crate::next::v1::EventBook {
+            crate::v1::EventBook {
                 cover: Some(cover("account", 1)),
                 pages: vec![EventPage {
                     sequence: 4,
                     ..EventPage::default()
                 }],
-                ..crate::next::v1::EventBook::default()
+                ..crate::v1::EventBook::default()
             },
         )),
         source_component: "account".to_string(),
@@ -136,12 +136,12 @@ fn a_panicking_ingest_aborts_the_chain_and_is_logged() {
         ),
         "{failure:?}"
     );
-    assert_eq!(failure.recovery(), crate::next::Recovery::Bug);
+    assert_eq!(failure.recovery(), crate::Recovery::Bug);
     assert!(streams(&store).is_empty(), "nothing written");
     let lines = log.lines();
     assert_eq!(lines.len(), 1);
     assert!(lines[0].starts_with(DEAD_LETTER_PREFIX));
-    assert!(lines[0].contains(&crate::next::ids::fact_command_id("pi_bad").to_string()));
+    assert!(lines[0].contains(&crate::ids::fact_command_id("pi_bad").to_string()));
 }
 
 /// A dead letter carries its error's code and args, never rendered
@@ -169,15 +169,15 @@ fn a_panicking_ingests_dead_letter_carries_its_code_not_english() {
         "the spec's key, never the kernel's code: {}",
         lines[0]
     );
-    let reason = crate::next::toys::wire(
+    let reason = crate::toys::wire(
         "ROUTER_REASON_UNHANDLED_HANDLER_ERROR",
         &[("cause", "ROUTER_REASON_HANDLER_PANICKED")],
     );
-    crate::next::toys::assert_letter(
-        &crate::next::toys::one_letter(log.letters()),
-        crate::next::v1::ComponentKind::Aggregate,
+    crate::toys::assert_letter(
+        &crate::toys::one_letter(log.letters()),
+        crate::v1::ComponentKind::Aggregate,
         &reason,
-        crate::next::toys::processing_failed(&reason, 0, false),
+        crate::toys::processing_failed(&reason, 0, false),
     );
     assert!(!lines[0].contains("panicked:"), "{}", lines[0]);
     assert!(
@@ -227,8 +227,8 @@ fn a_dead_letters_ambiguous_value_is_quoted() {
 /// line shows the count.
 #[test]
 fn a_retried_steps_dead_letter_holds_its_command_failure_and_retry_count() {
-    use crate::next::angzarr_router::error::{CodedError, RetryableStatus};
-    use crate::next::toys::{processing_failed, wire};
+    use crate::angzarr_router::error::{CodedError, RetryableStatus};
+    use crate::toys::{processing_failed, wire};
     let book = deposit_book();
     let error = KernelError::Router(CodedError::retryable_bug(
         RetryableStatus::Unavailable,
@@ -308,7 +308,7 @@ fn a_letter_names_its_component_and_its_kind() {
 }
 
 /// A command (5) to account 1, its ids assigned.
-fn deposit_book() -> crate::next::v1::CommandBook {
+fn deposit_book() -> crate::v1::CommandBook {
     check(
         command(
             cover("account", 1),
@@ -335,7 +335,7 @@ fn letter_for(cause: Cause) -> AngzarrDeadLetter {
 /// expected sequence, and the head as `actual_sequence` (decision 14.48).
 #[test]
 fn a_sequence_keys_letter_carries_the_expected_sequence_and_the_head() {
-    use crate::next::toys::{sequence_mismatch, wire};
+    use crate::toys::{sequence_mismatch, wire};
     let stream = cover("account", 1);
     let stale = KernelError::Stale {
         stream: stream.clone(),
@@ -389,12 +389,12 @@ fn a_sequence_keys_letter_carries_the_expected_sequence_and_the_head() {
 /// fatal bug, `processing_failed`, never retried, not transient.
 #[test]
 fn a_kernel_error_with_no_spec_key_keeps_its_own_code() {
-    use crate::next::toys::processing_failed;
+    use crate::toys::processing_failed;
     let error = KernelError::UnregisteredDomain {
         domain: "account".to_string(),
     };
     let letter = letter_for(Cause::Kernel(&error));
-    let reason = crate::next::route::diagnostic(&error);
+    let reason = crate::route::diagnostic(&error);
     assert_eq!(reason.code, "angzarr-embedded-next-unregistered-domain");
     assert_eq!(letter.reason, Some(reason.clone()));
     assert_eq!(
@@ -410,7 +410,7 @@ fn a_kernel_error_with_no_spec_key_keeps_its_own_code() {
 /// transient.
 #[test]
 fn a_limits_letter_carries_its_spec_key_and_limit() {
-    use crate::next::toys::{processing_failed, wire};
+    use crate::toys::{processing_failed, wire};
     for (error, reason) in [
         (
             KernelError::ChainTooDeep { limit: 4 },
@@ -439,7 +439,7 @@ fn a_limits_letter_carries_its_spec_key_and_limit() {
 /// cause.
 #[test]
 fn an_unavailable_handlers_letter_names_its_domain_and_cause() {
-    use crate::next::toys::{processing_failed, wire};
+    use crate::toys::{processing_failed, wire};
     let error = KernelError::HandlerUnavailable {
         stream: cover("account", 1),
         cause: "not-running".to_string(),
@@ -464,17 +464,15 @@ fn an_unavailable_handlers_letter_names_its_domain_and_cause() {
 /// its domain and cause; never angzarr-ports' or angzarr-embedded's code.
 #[test]
 fn a_retryable_store_or_sidecar_failures_letter_is_keyed_as_the_spec_spells_it() {
-    use crate::next::toys::{processing_failed, wire};
+    use crate::toys::{processing_failed, wire};
     use angzarr_diagnostic::Report;
-    let store = KernelError::Store(crate::next::StoreError::Unavailable(
-        angzarr_ports::Cause::new(
-            "angzarr-store-sqlite-unavailable",
-            [("errno", angzarr_ports::Arg::Uint(5))],
-        ),
-    ));
+    let store = KernelError::Store(crate::StoreError::Unavailable(angzarr_ports::Cause::new(
+        "angzarr-store-sqlite-unavailable",
+        [("errno", angzarr_ports::Arg::Uint(5))],
+    )));
     let sidecar = KernelError::Upcast {
         stream: cover("account", 1),
-        error: crate::next::UpcastError::Unavailable {
+        error: crate::UpcastError::Unavailable {
             cause: Report::new("x-sidecar-down"),
         },
     };
@@ -513,8 +511,8 @@ fn a_retryable_store_or_sidecar_failures_letter_is_keyed_as_the_spec_spells_it()
 /// kernel error, the same.
 #[test]
 fn a_malformed_kernel_books_letter_is_keyed_where_the_spec_has_a_key() {
-    use crate::next::toys::{processing_failed, wire};
-    use crate::next::Malformed;
+    use crate::toys::{processing_failed, wire};
+    use crate::Malformed;
     let naming = [
         ("command_type", "toy.account.cmd.v1.Deposit"),
         ("domain", "account"),
@@ -601,7 +599,7 @@ fn a_malformed_kernel_books_letter_is_keyed_where_the_spec_has_a_key() {
     }
     // A fact's payload type names it too.
     let fact = check(
-        crate::next::toys::fact(
+        crate::toys::fact(
             cover("account", 1),
             pack(&account::fact::PaymentReceived { cents: 1 }),
             "pi_1",
@@ -627,9 +625,9 @@ fn a_malformed_kernel_books_letter_is_keyed_where_the_spec_has_a_key() {
     );
     // Events name no command: empty.
     let letter = super::letter(
-        angzarr_dead_letter::Payload::RejectedEvents(crate::next::v1::EventBook {
+        angzarr_dead_letter::Payload::RejectedEvents(crate::v1::EventBook {
             cover: Some(cover("account", 1)),
-            ..crate::next::v1::EventBook::default()
+            ..crate::v1::EventBook::default()
         }),
         ACCOUNT,
         Cause::Malformed(&Malformed::NoRoot),
@@ -648,11 +646,11 @@ fn a_malformed_kernel_books_letter_is_keyed_where_the_spec_has_a_key() {
 /// in `command_refused`, an untyped one `processing_failed`.
 #[test]
 fn a_refusals_letter_is_keyed_as_answered() {
-    use crate::next::angzarr_router::error::{BusinessStatus, CodedError};
-    use crate::next::toys::{processing_failed, wire};
-    use crate::next::v1::angzarr_dead_letter::RejectionDetails;
-    use crate::next::v1::CommandRefusedDetails;
-    let untyped = crate::next::route::Rejected::of(&CodedError::rejection(
+    use crate::angzarr_router::error::{BusinessStatus, CodedError};
+    use crate::toys::{processing_failed, wire};
+    use crate::v1::angzarr_dead_letter::RejectionDetails;
+    use crate::v1::CommandRefusedDetails;
+    let untyped = crate::route::Rejected::of(&CodedError::rejection(
         BusinessStatus::FailedPrecondition,
         "toy-ledger-too-large",
         [("cents".to_string(), "2000".to_string())],
@@ -666,7 +664,7 @@ fn a_refusals_letter_is_keyed_as_answered() {
     );
 
     let object = pack(&account::cmd::Deposit { cents: 9 });
-    let typed = crate::next::route::Rejected::of(&CodedError::refused(object.clone()));
+    let typed = crate::route::Rejected::of(&CodedError::refused(object.clone()));
     let letter = letter_for(Cause::Refused(&typed));
     assert_eq!(
         letter.reason,

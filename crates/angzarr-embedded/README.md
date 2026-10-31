@@ -7,7 +7,7 @@ see angzarr core, <https://github.com/angzarr-io/angzarr>. No clock and nothing 
 Its dependencies are angzarr core's angzarr-diagnostic (for its errors, re-exported
 as `angzarr_embedded::angzarr_diagnostic`) and angzarr's wire
 types (angzarr-proto, with prost and prost-types), which the kernel,
-`angzarr_embedded::next`, operates on directly; angzarr-proto is a git dependency
+`angzarr_embedded`, operates on directly; angzarr-proto is a git dependency
 whose build runs `protoc`.
 
 ## The model

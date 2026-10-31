@@ -1,10 +1,10 @@
 //! Replay is strict and checked: every page's sequence, metadata,
 //! instant and rules; snapshots resume it; golden fixtures pin it; and every
 //! failure says how to recover.
-use crate::next::toys::prelude::*;
-use crate::next::v1::event_meta::Causation;
-use crate::next::v1::{EventMeta, EventPage, Snapshot};
-use crate::next::{
+use crate::toys::prelude::*;
+use crate::v1::event_meta::Causation;
+use crate::v1::{EventMeta, EventPage, Snapshot};
+use crate::{
     assert_replay_fixtures, check_replay_fixtures, pack, Committed, Failure, KernelError,
     Malformed, Recovery, ReplayError, ReplayFixture, StepError, StoreError, Stream,
 };
@@ -12,11 +12,11 @@ use angzarr_diagnostic::Report;
 use angzarr_ports::Cause;
 use angzarr_router::error::{BusinessStatus, CodedError, GrpcCode, RouterReason};
 
-use crate::next::toys::{
+use crate::toys::{
     account, at, command, command_id, cover, instant, registry, registry_with_upcasters, root,
     Account, AccountCmd, Edit, Ledger, Shelf,
 };
-use crate::next::Payload;
+use crate::Payload;
 
 fn meta(sequence: u64, rules: &str) -> EventMeta {
     EventMeta {
@@ -28,7 +28,7 @@ fn meta(sequence: u64, rules: &str) -> EventMeta {
     }
 }
 
-fn page(sequence: u64, payload: crate::next::Any) -> EventPage {
+fn page(sequence: u64, payload: crate::Any) -> EventPage {
     EventPage {
         payload: Some(payload),
         meta: Some(meta(sequence, "v2")),
@@ -109,13 +109,13 @@ fn replay_refuses_a_log_that_does_not_hold_together() {
             (|m: &mut EventMeta| m.causation = None) as fn(&mut EventMeta),
         ),
         ("causation", |m| {
-            m.causation = Some(Causation::CommandId(crate::next::v1::Uuid {
+            m.causation = Some(Causation::CommandId(crate::v1::Uuid {
                 value: vec![1; 15].into(),
             }))
         }),
         ("correlation_id", |m| m.correlation_id = None),
         ("correlation_id", |m| {
-            m.correlation_id = Some(crate::next::v1::Uuid {
+            m.correlation_id = Some(crate::v1::Uuid {
                 value: vec![1; 17].into(),
             })
         }),
@@ -192,7 +192,7 @@ fn a_stream_resumes_from_a_snapshot_and_dispatches_only_after_it() {
     );
 
     let foreign = Snapshot {
-        state: Some(pack(&crate::next::toys::ShelfState::default())),
+        state: Some(pack(&crate::toys::ShelfState::default())),
         ..snapshot.clone()
     };
     let error = Stream::<Account>::resume(cover("account", 1), &foreign, None, &[], &registry)
@@ -204,7 +204,7 @@ fn a_stream_resumes_from_a_snapshot_and_dispatches_only_after_it() {
         "{error:?}"
     );
     let garbled = Snapshot {
-        state: Some(crate::next::Any {
+        state: Some(crate::Any {
             type_url: "/toy.account.v1.AccountState".to_string(),
             value: vec![0x08],
         }),
@@ -233,7 +233,7 @@ fn dispatch_hands_out_the_state_just_after_each_event_from_a_sequence() {
 #[test]
 fn a_decision_commits_only_to_the_stream_and_head_it_was_made_against() {
     let registry = registry();
-    let log = crate::next::MemoryDeadLetters::new();
+    let log = crate::MemoryDeadLetters::new();
     let mut a = Stream::<Account>::new(root(1), None).unwrap();
     let mut b = Stream::<Account>::new(root(2), None).unwrap();
     let open = |n| command(cover("account", n), AccountCmd::Open.to_any());
@@ -265,7 +265,7 @@ fn a_decision_commits_only_to_the_stream_and_head_it_was_made_against() {
     );
     assert_eq!(
         Stream::<Account>::new(
-            crate::next::v1::Uuid {
+            crate::v1::Uuid {
                 value: vec![1].into()
             },
             None
@@ -282,12 +282,12 @@ fn a_decision_commits_only_to_the_stream_and_head_it_was_made_against() {
         .execute(deposit(), &registry, &at(3), &log, &mut [])
         .ready()
         .unwrap();
-    assert!(matches!(applied, crate::next::Executed::Applied(e) if e.len() == 1));
+    assert!(matches!(applied, crate::Executed::Applied(e) if e.len() == 1));
     let duplicate = a
         .execute(deposit(), &registry, &at(4), &log, &mut [])
         .ready()
         .unwrap();
-    assert!(matches!(duplicate, crate::next::Executed::Duplicate(e)
+    assert!(matches!(duplicate, crate::Executed::Duplicate(e)
         if e.len() == 1 && e[0].sequence() == 1));
     assert_eq!(a.state().cents, 4, "applied once");
 }
@@ -335,8 +335,8 @@ fn golden_fixtures_replay_through_the_upcaster_and_name_every_failure() {
         failures[0]
     );
     assert_eq!(failures[1], "drifted: no event 5");
-    let failures = check_replay_fixtures::<Account>(&crate::next::toys::registry(), &[unreadable])
-        .unwrap_err();
+    let failures =
+        check_replay_fixtures::<Account>(&crate::toys::registry(), &[unreadable]).unwrap_err();
     assert_eq!(failures.len(), 1);
     assert!(failures[0].starts_with("unreadable: "), "{}", failures[0]);
     assert!(
@@ -445,7 +445,7 @@ fn every_failure_says_how_to_recover() {
             Recovery::Bug,
             KernelError::Upcast {
                 stream: stream.clone(),
-                error: crate::next::UpcastError::Rule {
+                error: crate::UpcastError::Rule {
                     source: String::new(),
                     error: Report::new("x-bad"),
                 },
@@ -531,7 +531,7 @@ fn every_failure_says_how_to_recover() {
         (
             Recovery::Retry,
             KernelError::Router(CodedError::immediate(
-                crate::next::reasons::CoordinatorReason::ConflictOverlap.as_str_name(),
+                crate::reasons::CoordinatorReason::ConflictOverlap.as_str_name(),
                 [],
             )),
         ),
@@ -590,7 +590,7 @@ fn every_failure_says_how_to_recover() {
 fn errors_display_their_code_and_args_and_wrappers_their_cause_flattened() {
     use angzarr_diagnostic::Diagnostic;
     let stale = KernelError::Stale {
-        stream: crate::next::v1::Cover {
+        stream: crate::v1::Cover {
             edition: Some("what-if".to_string()),
             ..cover("account", 1)
         },
@@ -603,18 +603,18 @@ fn errors_display_their_code_and_args_and_wrappers_their_cause_flattened() {
         text,
         format!("angzarr-embedded-next-stale stream={at} expected=1 actual=2")
     );
-    let failure = Failure::<crate::next::toys::Refused>::Kernel(stale.clone());
+    let failure = Failure::<crate::toys::Refused>::Kernel(stale.clone());
     assert_eq!(failure.to_string(), text);
     assert_eq!(failure.code(), "angzarr-embedded-next-stale");
     assert_eq!(failure.args().len(), 3);
-    let rejected = Failure::Rejected(crate::next::toys::Refused::Overdrawn { short: 3 });
+    let rejected = Failure::Rejected(crate::toys::Refused::Overdrawn { short: 3 });
     assert_eq!(rejected.code(), "toy-account-overdrawn");
     assert_eq!(rejected.to_string(), "toy-account-overdrawn short=3");
-    let step = StepError::Rejected(Report::of(&crate::next::toys::Refused::NotOpen));
+    let step = StepError::Rejected(Report::of(&crate::toys::Refused::NotOpen));
     assert_eq!(step.to_string(), "toy-account-not-open");
     let step = StepError::Kernel(stale.clone());
     assert_eq!(step.to_string(), text);
-    let downstream = Failure::<crate::next::toys::Refused>::Downstream {
+    let downstream = Failure::<crate::toys::Refused>::Downstream {
         path: vec![],
         error: step,
     };
@@ -625,7 +625,7 @@ fn errors_display_their_code_and_args_and_wrappers_their_cause_flattened() {
              error.stream={at} error.expected=1 error.actual=2"
         )
     );
-    let upcast = crate::next::UpcastError::Payload(crate::next::PayloadError::UnknownType {
+    let upcast = crate::UpcastError::Payload(crate::PayloadError::UnknownType {
         type_url: "/a.B".to_string(),
     });
     assert_eq!(
@@ -720,7 +720,7 @@ fn a_store_error_keeps_its_angzarr_ports_code_and_args() {
     assert!(matches!(args[2].1, Arg::Uint(2)));
 
     let not_forked = KernelError::Store(StoreError::EditionNotForked {
-        stream: Box::new(crate::next::toys::cover_in("account", 1, "what-if")),
+        stream: Box::new(crate::toys::cover_in("account", 1, "what-if")),
     });
     assert_eq!(not_forked.code(), "angzarr-ports-store-edition-not-forked");
     assert_eq!(not_forked.args().len(), 1);
@@ -775,7 +775,7 @@ fn an_event_the_kernel_cannot_replay_is_its_own_error() {
 
 #[test]
 fn a_domain_the_registry_lacks_cannot_be_replayed_or_snapshotted() {
-    let empty = crate::next::Registry::new();
+    let empty = crate::Registry::new();
     let unknown = Some(KernelError::UnregisteredDomain {
         domain: "account".to_string(),
     });
@@ -809,12 +809,12 @@ fn a_domain_the_registry_lacks_cannot_be_replayed_or_snapshotted() {
 fn a_facts_events_read_back_with_its_origin() {
     let registry = registry();
     let store = MemoryStore::new();
-    crate::next::toys::handle::<Account>(
+    crate::toys::handle::<Account>(
         &store,
         &registry,
-        crate::next::toys::fact(
+        crate::toys::fact(
             cover("account", 1),
-            crate::next::toys::AccountFact::PaymentReceived(3).to_any(),
+            crate::toys::AccountFact::PaymentReceived(3).to_any(),
             "pi_r",
         ),
         &at(5),
@@ -829,10 +829,10 @@ fn a_facts_events_read_back_with_its_origin() {
 
 #[test]
 fn commutative_cannot_compare_a_window_hidden_in_a_snapshot() {
-    use crate::next::toys::{set, shelf, ShelfState};
-    use crate::next::v1::ConflictResolution;
+    use crate::toys::{set, shelf, ShelfState};
+    use crate::v1::ConflictResolution;
     let registry = registry();
-    let log = crate::next::MemoryDeadLetters::new();
+    let log = crate::MemoryDeadLetters::new();
     let snapshot = Snapshot {
         sequence: 1,
         state: Some(pack(&ShelfState {
@@ -878,7 +878,7 @@ fn commutative_cannot_compare_a_window_hidden_in_a_snapshot() {
         .ready()
         .unwrap();
     assert!(
-        matches!(&applied, crate::next::Executed::Applied(e) if e.len() == 1),
+        matches!(&applied, crate::Executed::Applied(e) if e.len() == 1),
         "the window from the first held event is held: c and d commute: {applied:?}"
     );
 }
@@ -890,7 +890,7 @@ fn commutative_cannot_compare_a_window_hidden_in_a_snapshot() {
 #[test]
 fn a_resumed_stream_decides_against_its_snapshot_and_the_events_after_it() {
     let registry = registry();
-    let log = crate::next::MemoryDeadLetters::new();
+    let log = crate::MemoryDeadLetters::new();
     let snapshot = Snapshot {
         sequence: 1,
         state: Some(pack(&account::AccountState {

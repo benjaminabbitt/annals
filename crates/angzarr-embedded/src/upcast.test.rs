@@ -1,24 +1,24 @@
 //! Upcasting by type URL, for events and (discouraged) commands, in
 //! registration order, with strict decoding.
-use crate::next::toys::prelude::*;
-use crate::next::v1::{EventMeta, EventPage, UpcastRequest};
-use crate::next::{
+use crate::toys::prelude::*;
+use crate::v1::{EventMeta, EventPage, UpcastRequest};
+use crate::{
     pack, ChainProblem, EventStore, Failure, KernelError, Registry, Stream, UpcastChainError,
     Upcaster,
 };
 
-use crate::next::toys::{
+use crate::toys::{
     account, account_upcaster, at, command, command_id, cover, handle, instant, opened, payloads,
     registry, registry_with_upcasters, Account, AccountEvent, Edit,
 };
 
-fn page(sequence: u64, payload: crate::next::Any) -> EventPage {
+fn page(sequence: u64, payload: crate::Any) -> EventPage {
     EventPage {
         payload: Some(payload),
         meta: Some(EventMeta {
-            causation: Some(crate::next::v1::event_meta::Causation::CommandId(
-                command_id(sequence as u128),
-            )),
+            causation: Some(crate::v1::event_meta::Causation::CommandId(command_id(
+                sequence as u128,
+            ))),
             correlation_id: Some(command_id(sequence as u128)),
             recorded_at: Some(instant(sequence as i64)),
             rules_version: "v2".to_string(),
@@ -122,7 +122,7 @@ fn an_old_command_is_upcast_then_decided() {
         [AccountEvent::Deposited(200)]
     );
 
-    let without = crate::next::toys::registry();
+    let without = crate::toys::registry();
     let old = command(
         cover("account", 1),
         pack(&account::cmd::v0::Credit { euros: 2 }),
@@ -148,10 +148,7 @@ fn an_upcaster_is_checked_whole() {
     let problems = |upcaster: Upcaster| -> Vec<ChainProblem> {
         let mut registry = Registry::new();
         registry
-            .register::<Account>(
-                upcaster,
-                crate::next::toys::handlers::<crate::next::toys::Account>(),
-            )
+            .register::<Account>(upcaster, crate::toys::handlers::<crate::toys::Account>())
             .unwrap();
         registry
             .check()
@@ -193,10 +190,7 @@ fn an_upcaster_is_checked_for_order_and_untyped_rules_are_not_followed() {
     let problems = |upcaster: Upcaster| -> Vec<ChainProblem> {
         let mut registry = Registry::new();
         registry
-            .register::<Account>(
-                upcaster,
-                crate::next::toys::handlers::<crate::next::toys::Account>(),
-            )
+            .register::<Account>(upcaster, crate::toys::handlers::<crate::toys::Account>())
             .unwrap();
         registry
             .check()
@@ -255,29 +249,26 @@ fn an_upcast_rule_reports_its_own_failure_and_bytes_it_cannot_read() {
     let old = pack(&account::v0::Credited { euros: 2 });
     assert_eq!(
         refusing.upcast_event(&old),
-        Err(crate::next::UpcastError::Rule {
+        Err(crate::UpcastError::Rule {
             source: "toy.account.v0.Credited".to_string(),
             error: angzarr_diagnostic::Report::new("toy-refused")
         })
     );
-    let garbled = crate::next::Any {
+    let garbled = crate::Any {
         type_url: old.type_url.clone(),
         value: vec![0x08],
     };
     assert!(matches!(
         account_upcaster().upcast_event(&garbled),
-        Err(crate::next::UpcastError::Payload(
-            crate::next::PayloadError::Decode { .. }
+        Err(crate::UpcastError::Payload(
+            crate::PayloadError::Decode { .. }
         ))
     ));
 
     let registry = {
         let mut registry = Registry::new();
         registry
-            .register::<Account>(
-                refusing,
-                crate::next::toys::handlers::<crate::next::toys::Account>(),
-            )
+            .register::<Account>(refusing, crate::toys::handlers::<crate::toys::Account>())
             .unwrap();
         registry
     };
@@ -294,7 +285,7 @@ fn an_upcast_rule_reports_its_own_failure_and_bytes_it_cannot_read() {
         failure,
         Failure::Kernel(KernelError::Upcast { ref stream, .. }) if *stream == cover("account", 1)
     ));
-    assert_eq!(failure.recovery(), crate::next::Recovery::Bug);
+    assert_eq!(failure.recovery(), crate::Recovery::Bug);
 
     let mut request = UpcastRequest {
         domain: "account".to_string(),
@@ -322,10 +313,7 @@ fn an_upcaster_names_itself_and_each_problem_once() {
     let problems = |upcaster: Upcaster| -> Vec<ChainProblem> {
         let mut registry = Registry::new();
         registry
-            .register::<Account>(
-                upcaster,
-                crate::next::toys::handlers::<crate::next::toys::Account>(),
-            )
+            .register::<Account>(upcaster, crate::toys::handlers::<crate::toys::Account>())
             .unwrap();
         registry
             .check()

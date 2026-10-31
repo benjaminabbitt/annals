@@ -1,10 +1,10 @@
 //! Payloads are `Any`, packed from prost messages by their `prost::Name`.
 //! This runs: packing and decoding are implemented.
 
-use crate::next::{pack, type_name, Any, Payload, PayloadError};
+use crate::{pack, type_name, Any, Payload, PayloadError};
 use prost::Message;
 
-use crate::next::toys::{account, AccountEvent};
+use crate::toys::{account, AccountEvent};
 
 #[test]
 fn payloads_are_any_packed_by_their_prost_name() {
@@ -61,16 +61,16 @@ fn payloads_are_any_packed_by_their_prost_name() {
 
 #[test]
 fn a_domain_that_takes_no_facts_decodes_none() {
-    use crate::next::Payload;
+    use crate::Payload;
     use std::convert::Infallible;
     assert!(<Infallible as Payload>::type_urls().is_empty());
     assert_eq!(
-        <Infallible as Payload>::from_any(&crate::next::Any {
+        <Infallible as Payload>::from_any(&crate::Any {
             type_url: "/a.B".to_string(),
             value: Vec::new(),
         })
         .err(),
-        Some(crate::next::PayloadError::UnknownType {
+        Some(crate::PayloadError::UnknownType {
             type_url: "/a.B".to_string()
         })
     );
@@ -79,7 +79,7 @@ fn a_domain_that_takes_no_facts_decodes_none() {
 /// A wire message and the domain type it converts to, as angzarr's generator
 /// emits them: the domain type requires `at`, which the wire leaves optional.
 mod wire_and_domain {
-    use crate::next::{Timestamp, WireError};
+    use crate::{Timestamp, WireError};
 
     #[derive(Clone, PartialEq, prost::Message)]
     pub struct Stamped {
@@ -113,7 +113,7 @@ mod wire_and_domain {
 
 #[test]
 fn decode_as_converts_a_valid_wire_message_to_its_domain_type() {
-    use crate::next::{decode_as, Timestamp};
+    use crate::{decode_as, Timestamp};
     use wire_and_domain::{Stamped, StampedDomain};
 
     let at = Timestamp {
@@ -126,7 +126,7 @@ fn decode_as_converts_a_valid_wire_message_to_its_domain_type() {
 
 #[test]
 fn decode_as_refuses_a_wire_message_its_domain_type_cannot_hold() {
-    use crate::next::decode_as;
+    use crate::decode_as;
     use angzarr_diagnostic::Diagnostic;
     use wire_and_domain::{Stamped, StampedDomain};
 
@@ -141,7 +141,7 @@ fn decode_as_refuses_a_wire_message_its_domain_type_cannot_hold() {
 
 #[test]
 fn decode_as_refuses_bytes_that_do_not_decode() {
-    use crate::next::decode_as;
+    use crate::decode_as;
     use wire_and_domain::{Stamped, StampedDomain};
 
     let any = Any {

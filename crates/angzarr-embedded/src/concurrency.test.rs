@@ -29,13 +29,13 @@ use angzarr_router::error::{CodedError, GrpcCode};
 use angzarr_router::pb::CommandHandlerResponse;
 use angzarr_router::router::CommandHandler;
 
-use crate::next::toys::prelude::*;
-use crate::next::toys::{at, command, command_id, cover};
-use crate::next::v1::{
+use crate::toys::prelude::*;
+use crate::toys::{at, command, command_id, cover};
+use crate::v1::{
     CommandBook, ComponentDescriptor, ComponentKind, ConflictResolution, ContextualCommand,
     EventBook, EventPage, Handling, StateDescriptor, StateOptions,
 };
-use crate::next::{
+use crate::{
     class, Any, Class, Failure, Handled, Kernel, KernelError, MemoryDeadLetters, Recovery,
     Registry, Rejected,
 };
@@ -43,7 +43,7 @@ use crate::next::{
 /// The reason key a stale expected sequence is answered with: the full
 /// name of `CoordinatorReason::ExpectedSequenceStale` (decision 14.45).
 fn expected_sequence_stale() -> &'static str {
-    crate::next::reasons::CoordinatorReason::ExpectedSequenceStale.as_str_name()
+    crate::reasons::CoordinatorReason::ExpectedSequenceStale.as_str_name()
 }
 
 /// `failure` is the coordinator's stale expected sequence for stream

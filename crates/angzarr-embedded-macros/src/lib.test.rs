@@ -84,9 +84,8 @@ fn the_rejection_is_inferred_through_failed() {
     .expect("expands")
     .to_string();
     assert!(
-        expanded.contains(
-            "type Rejection = :: angzarr_embedded :: next :: markup :: Rejection < Refused >"
-        ),
+        expanded
+            .contains("type Rejection = :: angzarr_embedded :: markup :: Rejection < Refused >"),
         "{expanded}"
     );
 }
@@ -323,7 +322,7 @@ fn a_process_manager_with_only_refusal_handlers_still_skips_for_no_instance() {
     assert!(expanded.contains(". on_refused ("), "{expanded}");
     assert!(
         expanded.contains(
-            "const STARTS : & 'static [:: angzarr_embedded :: next :: markup :: TypeName] = & [] ;"
+            "const STARTS : & 'static [:: angzarr_embedded :: markup :: TypeName] = & [] ;"
         ),
         "{expanded}"
     );
@@ -403,7 +402,7 @@ fn a_projectors_sources_are_named_in_order() {
     )
     .expect("expanded")
     .to_string();
-    let wallet = quote!(<Wallet as ::angzarr_embedded::next::Domain>::NAME).to_string();
+    let wallet = quote!(<Wallet as ::angzarr_embedded::Domain>::NAME).to_string();
     let sources =
         format!("const SOURCES : & 'static [& 'static str] = & [{wallet} , \"lamp\" ,] ;");
     assert!(expanded.contains(&sources), "{expanded}");

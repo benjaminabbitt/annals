@@ -13,14 +13,12 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use angzarr_diagnostic::{Arg, Diagnostic, Report};
 use angzarr_store_sqlite::SqliteStore;
 
-use crate::next::toys::{
-    self, cover, cover_in, ledger, ledger_root, AccountCmd, Bookkeeping, Edit,
-};
-use crate::next::v1::{
+use crate::toys::{self, cover, cover_in, ledger, ledger_root, AccountCmd, Bookkeeping, Edit};
+use crate::v1::{
     command_page, Command, CommandBook, CommandPage, ConflictResolution, Cover, Snapshot,
     StateDescriptor, StateOptions, Uuid,
 };
-use crate::next::{
+use crate::{
     pack, Any, Domain, EventStore, Failure, Handled, Kernel, KernelError, MemoryDeadLetters,
     Payload, PayloadError, PositionKey, PositionStore, Recovery, Registry, Rejected, Sampled,
     SnapshotStore, State, StoreError, Stream, StreamRef, Timestamp, Upcaster,
@@ -143,13 +141,13 @@ impl Domain for Tally {
 /// The tally's handler, on the router's table. A negative `n` is a bug
 /// in this toy: the handler panics, as a domain's bug would.
 fn tally_handlers(
-    table: crate::next::angzarr_router::domain::DomainDispatch<Count>,
-) -> crate::next::angzarr_router::domain::DomainDispatch<Count> {
+    table: crate::angzarr_router::domain::DomainDispatch<Count>,
+) -> crate::angzarr_router::domain::DomainDispatch<Count> {
     table.on_command("tally.v1.Add", |any, _, _| {
         let cmd = Add::from_any(any).expect("routed by type");
         assert!(cmd.n >= 0, "a tally never adds a negative");
-        Ok(Some(crate::next::v1::EventBook {
-            pages: vec![crate::next::v1::EventPage {
+        Ok(Some(crate::v1::EventBook {
+            pages: vec![crate::v1::EventPage {
                 payload: Some(Added { n: cmd.n }.to_any()),
                 ..Default::default()
             }],
@@ -203,7 +201,7 @@ async fn handle<D: Domain>(
 }
 
 /// `stream`'s pages as stored.
-async fn pages(store: &SqliteStore, stream: &Cover) -> Vec<crate::next::v1::EventPage> {
+async fn pages(store: &SqliteStore, stream: &Cover) -> Vec<crate::v1::EventPage> {
     let stream = StreamRef::try_from(stream).unwrap();
     store.read(stream, 0, None).await.unwrap().pages
 }
@@ -482,7 +480,7 @@ async fn resume_after_reopening_runs_what_a_crash_left_owed() {
         assert_eq!(landed, expected, "round {round}");
     }
     let store = SqliteStore::open(&path).await.unwrap();
-    let book = crate::next::v1::EventBook {
+    let book = crate::v1::EventBook {
         pages: pages(&store, &ledger_cover()).await,
         ..Default::default()
     };

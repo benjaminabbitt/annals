@@ -10,12 +10,12 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use angzarr_ports::memory::MemoryStore;
 use angzarr_ports::Cause;
 
-use crate::next::angzarr_ports::Uuid;
-use crate::next::store::{
+use crate::angzarr_ports::Uuid;
+use crate::store::{
     EventStore, Head, PositionKey, PositionStore, Slice, SnapshotStore, StoreError, StreamRef,
     Write, Written,
 };
-use crate::next::v1::{Cover, EventPage, Snapshot};
+use crate::v1::{Cover, EventPage, Snapshot};
 
 /// One write, as the kernel made it.
 #[derive(Clone, Default, PartialEq, Debug)]

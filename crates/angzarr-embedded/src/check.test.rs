@@ -39,7 +39,7 @@ mod empty {
 
     use angzarr_proto::v1::{ConflictResolution, StateDescriptor, StateOptions};
 
-    use crate::next::{Domain, Registry, State, Upcaster};
+    use crate::{Domain, Registry, State, Upcaster};
 
     #[derive(Clone, PartialEq, prost::Message)]
     pub struct Nothing {}
@@ -278,21 +278,21 @@ mod parse {
     //! Step 1: one domain-blind parse checks everything, and what it accepts
     //! has non-optional accessors. These run: the parse is implemented.
 
-    use crate::next::v1::{
+    use crate::v1::{
         command_page, CommandBook, CommandPage, ConflictResolution, Cover, EventRef, FactOrigin,
         Handling, Uuid,
     };
-    use crate::next::{check, ids, pack, Body, Malformed};
+    use crate::{check, ids, pack, Body, Malformed};
 
-    use crate::next::toys::{
+    use crate::toys::{
         account, command, correlation, cover, cover_in, fact, registry, root, set, Edit,
     };
 
-    fn deposit(cents: i64) -> crate::next::Any {
+    fn deposit(cents: i64) -> crate::Any {
         pack(&account::cmd::Deposit { cents })
     }
 
-    fn payment(cents: i64) -> crate::next::Any {
+    fn payment(cents: i64) -> crate::Any {
         pack(&account::fact::PaymentReceived { cents })
     }
 
@@ -356,10 +356,7 @@ mod parse {
             .expecting(7, ConflictResolution::AggregateHandles);
         let checked = check(book, &registry()).unwrap();
 
-        assert_eq!(
-            checked.command_id(),
-            Some(&crate::next::toys::command_id(9))
-        );
+        assert_eq!(checked.command_id(), Some(&crate::toys::command_id(9)));
         assert_eq!(checked.correlation_id(), Some(&correlation(4)));
         assert_eq!(checked.expected_sequence(), Some(7));
         assert_eq!(
@@ -574,19 +571,19 @@ mod identify {
     //! Step 2: ids are assigned once, after the check, as angzarr assigns them.
     //! These run: identification is implemented.
 
-    use crate::next::v1::event_meta::Causation;
-    use crate::next::v1::{EventMeta, FactOrigin};
-    use crate::next::{check, ids, pack, Identified};
+    use crate::v1::event_meta::Causation;
+    use crate::v1::{EventMeta, FactOrigin};
+    use crate::{check, ids, pack, Identified};
 
-    use crate::next::toys::{
+    use crate::toys::{
         account, at, command, command_id, correlation, cover, fact, instant, minted, registry, Edit,
     };
 
-    fn identified(book: crate::next::v1::CommandBook, seconds: i64) -> Identified {
+    fn identified(book: crate::v1::CommandBook, seconds: i64) -> Identified {
         check(book, &registry()).unwrap().identify(&at(seconds))
     }
 
-    fn deposit() -> crate::next::Any {
+    fn deposit() -> crate::Any {
         pack(&account::cmd::Deposit { cents: 5 })
     }
 
@@ -702,7 +699,7 @@ mod identify {
 
     #[test]
     fn recorded_at_is_raised_to_the_streams_last_never_lowered() {
-        use crate::next::{not_before, Timestamp};
+        use crate::{not_before, Timestamp};
         let later = Timestamp {
             seconds: 40,
             nanos: 5,

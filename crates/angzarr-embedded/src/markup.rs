@@ -44,7 +44,7 @@
 //! - [`NoSnapshot`]: the snapshot form of a domain that has none.
 //! - The functions the expansion calls, each stable and public, so
 //!   anything the markup writes can be written by hand
-//!   (`next/hand_written.test.rs` registers an aggregate and a policy
+//!   (`src/hand_written.test.rs` registers an aggregate and a policy
 //!   with no macro): packing and decoding ([`pack_message`],
 //!   [`type_url_of`], [`decode_message`], [`command_refused_type_url`],
 //!   [`decode_command_refused`], [`refused_command_type_url`]); running a
@@ -60,7 +60,7 @@
 //! marked-up aggregate, process manager, policy or projector runs in
 //! angzarr-embedded's process or as its own service, with no change to its code.
 //!
-//! angzarr-embedded's `next/decorated.test.rs` runs all of it.
+//! angzarr-embedded's `src/decorated.test.rs` runs all of it.
 
 use std::fmt;
 

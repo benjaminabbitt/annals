@@ -22,10 +22,10 @@ repository's crates do not use.
 
 | Crate | What it is |
 |---|---|
-| [`angzarr-embedded`](crates/angzarr-embedded) | event-sourcing kernel on angzarr's proto types (`angzarr_embedded::next`): decide, emit, apply, replay; angzarr's local runtime |
+| [`angzarr-embedded`](crates/angzarr-embedded) | event-sourcing kernel on angzarr's proto types (`angzarr_embedded`): decide, emit, apply, replay; angzarr's local runtime |
 | [`angzarr-embedded-host`](crates/angzarr-embedded-host) | remote components as child processes (the go-plugin model): launched from `[[component]]` config tables, which list every component, in-process ones too (`kind`, required, = `domain`, `policy`, `projector` or `upcaster`; read strictly: unknown keys and values refused, at their key path), handshaken, reached by gRPC on a Unix socket, supervised, and handed back to the kernel by kind (a domain as an angzarr-router `CommandHandler`, a policy as a `PolicyComponent`, a projector as a `ProjectorHandler`) |
 | [`angzarr-store-sqlite`](crates/angzarr-store-sqlite) | angzarr-ports on SQLite, the one SQLite adapter angzarr-embedded and angzarr share: a leaf (nothing of angzarr-embedded), sea-query statements on sqlx, with its migrations; held to the ports' conformance suite |
-| [`angzarr-embedded-macros`](crates/angzarr-embedded-macros) | markup over hand-written aggregates, process managers, policies and projectors, generating their `angzarr_embedded::next` glue |
+| [`angzarr-embedded-macros`](crates/angzarr-embedded-macros) | markup over hand-written aggregates, process managers, policies and projectors, generating their `angzarr_embedded` glue |
 | [`angzarr-embedded-catalog-check`](crates/angzarr-embedded-catalog-check) | test-only: every error code has a message, with exactly its args, in every shipped Fluent catalog |
 
 ```

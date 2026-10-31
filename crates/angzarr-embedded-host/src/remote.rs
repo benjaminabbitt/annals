@@ -44,8 +44,8 @@ use crate::rpc::policy::policy_service_client::PolicyServiceClient;
 use crate::rpc::projector::projector_service_client::ProjectorServiceClient;
 use crate::rpc::upcaster::upcaster_service_client::UpcasterServiceClient;
 use angzarr_diagnostic::Report;
-use angzarr_embedded::next::reasons::args;
-use angzarr_embedded::next::{Description, KernelError, UpcastError, UpcastPort};
+use angzarr_embedded::reasons::args;
+use angzarr_embedded::{Description, KernelError, UpcastError, UpcastPort};
 
 /// The router-style codes a remote handler's dispatch adds to the router's
 /// own (`angzarr_router::error::codes`).
@@ -59,7 +59,7 @@ pub mod codes {
 
 /// The extras key naming why a remote handler was unreachable, one of the
 /// [`causes`]. The domain is under the catalog's `domain`
-/// (`angzarr_embedded::next::reasons::args::DOMAIN`).
+/// (`angzarr_embedded::reasons::args::DOMAIN`).
 pub const CAUSE: &str = "cause";
 
 /// The extras key a transport's failure carries its text under, verbatim:
@@ -362,7 +362,7 @@ impl PolicyComponent for RemotePolicyHandler {
         let Some(fact) = answer.fact else {
             return Ok(None);
         };
-        angzarr_embedded::next::translated(fact).map(Some)
+        angzarr_embedded::translated(fact).map(Some)
     }
 }
 
@@ -464,7 +464,7 @@ impl RemoteUpcaster {
             .events
             .first()
             .and_then(|page| page.payload.as_ref())
-            .map(|payload| angzarr_embedded::next::type_name(&payload.type_url).to_string())
+            .map(|payload| angzarr_embedded::type_name(&payload.type_url).to_string())
             .unwrap_or_default();
         UpcastError::Rule {
             source,
@@ -604,8 +604,7 @@ pub(crate) fn status_to_coded(domain: &str, status: &tonic::Status) -> CodedErro
         grpc,
         // Only a business status carries its typed object to a policy.
         refusal: refusal.filter(|_| {
-            angzarr_embedded::next::class(grpc as i32)
-                == angzarr_embedded::next::Class::BusinessFatal
+            angzarr_embedded::class(grpc as i32) == angzarr_embedded::Class::BusinessFatal
         }),
     }
 }

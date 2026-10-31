@@ -1,7 +1,7 @@
 use prost_types::Any;
 
 use super::{is_nothing, NOTHING};
-use crate::next::v1::EventPage;
+use crate::v1::EventPage;
 
 /// A fact's record of nothing is known by its type URL alone.
 #[test]
@@ -24,17 +24,17 @@ fn a_record_of_nothing_is_known_by_its_type_url() {
 /// bytes that do not decode as the event's type.
 #[test]
 fn a_fold_that_fails_carries_its_cause_as_a_key_and_args() {
-    use crate::next::toys::{account, command, cover, registry, Ready};
+    use crate::toys::{account, command, cover, registry, Ready};
     use angzarr_router::error::RouterReason;
     use angzarr_router::pb::ContextualCommand;
 
     let registry = registry();
     let stream = cover("account", 1);
-    let mut corrupt = crate::next::pack(&account::Deposited { cents: 1 });
+    let mut corrupt = crate::pack(&account::Deposited { cents: 1 });
     corrupt.value = vec![0xff, 0xff, 0xff];
     let type_url = corrupt.type_url.clone();
     let request = ContextualCommand {
-        events: Some(crate::next::v1::EventBook {
+        events: Some(crate::v1::EventBook {
             cover: Some(stream.clone()),
             pages: vec![EventPage {
                 sequence: 0,
@@ -46,7 +46,7 @@ fn a_fold_that_fails_carries_its_cause_as_a_key_and_args() {
         }),
         command: Some(command(
             stream,
-            crate::next::pack(&account::cmd::Deposit { cents: 1 }),
+            crate::pack(&account::cmd::Deposit { cents: 1 }),
         )),
         ..ContextualCommand::default()
     };
@@ -164,7 +164,7 @@ fn a_retryable_bug_and_an_immediate_return_go_out_under_their_status() {
     use angzarr_router::error::{GrpcCode, HandlerError, RetryableStatus};
 
     use super::failed;
-    use crate::next::markup::{Failed, Rejection};
+    use crate::markup::{Failed, Rejection};
 
     let coded = |error: HandlerError| match error {
         HandlerError::Coded(coded) => coded,
@@ -283,7 +283,7 @@ fn a_stream_of_distinct_child_codes_leaks_nothing() {
             &format!("CHILD_BROKE_{n}"),
             [(format!("table_{n}"), n.to_string())],
         );
-        let routed = crate::next::KernelError::Router(bug.clone());
+        let routed = crate::KernelError::Router(bug.clone());
         let routed = (routed.to_string(), routed.code().len(), routed.args().len());
         let failure = super::policy_failed(&angzarr_diagnostic::Report::new("toy-policy-broke"));
         drop((shown, routed, failure));

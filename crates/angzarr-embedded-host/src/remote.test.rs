@@ -1,8 +1,8 @@
 use std::collections::BTreeMap;
 
 use crate::rpc::google_rpc::{ErrorInfo, Status as RpcStatus, ERROR_INFO_TYPE_URL};
-use angzarr_embedded::next::reasons::{args, CoordinatorReason};
-use angzarr_embedded::next::{class, Class};
+use angzarr_embedded::reasons::{args, CoordinatorReason};
+use angzarr_embedded::{class, Class};
 use angzarr_router::error::GrpcCode;
 use prost::Message;
 use prost_types::Any;
@@ -119,7 +119,7 @@ fn a_child_not_running_is_retryable() {
 /// retryable bug.
 #[test]
 fn unavailability_is_the_specs_key() {
-    use angzarr_embedded::next::reasons::CoordinatorReason;
+    use angzarr_embedded::reasons::CoordinatorReason;
     assert_eq!(
         codes::REMOTE_HANDLER_UNAVAILABLE,
         CoordinatorReason::HandlerUnavailable.as_str_name()
@@ -363,7 +363,7 @@ fn only_unavailability_is_retryable() {
 /// more is the policy's bug, refused INTERNAL under the coordinator's keys.
 #[test]
 fn a_translated_fact_is_a_bare_payload() {
-    use angzarr_embedded::next::translated;
+    use angzarr_embedded::translated;
     let payload = Any {
         type_url: "/test.table.v1.SeatReleased".to_string(),
         value: vec![1],

@@ -1,10 +1,10 @@
 //! Conflict resolution: all three strategies, COMMUTATIVE the default where
 //! the state declares conflict units, STRICT otherwise.
-use crate::next::toys::prelude::*;
-use crate::next::v1::ConflictResolution;
-use crate::next::{Failure, Handled, KernelError, Key, Payload, Recovery, UnitPath, Units};
+use crate::toys::prelude::*;
+use crate::v1::ConflictResolution;
+use crate::{Failure, Handled, KernelError, Key, Payload, Recovery, UnitPath, Units};
 
-use crate::next::toys::{
+use crate::toys::{
     at, command, cover, handle, opened, payloads, registry, set, shelf, Account, AccountCmd, Edit,
     Shelf, ShelfCmd, ShelfEvent,
 };
@@ -35,7 +35,7 @@ fn shelf_events(handled: &Handled) -> Vec<ShelfEvent> {
 /// The shelf's units the window and the command changed, if `failure` is
 /// COMMUTATIVE's overlap at `expected` with the head at `actual`.
 fn overlap(
-    failure: &Failure<crate::next::Rejected>,
+    failure: &Failure<crate::Rejected>,
     expected: u64,
     actual: u64,
 ) -> Option<(String, String)> {
@@ -53,7 +53,7 @@ fn overlap(
     }
 }
 
-fn stale(expected: u64, actual: u64) -> Failure<crate::next::Rejected> {
+fn stale(expected: u64, actual: u64) -> Failure<crate::Rejected> {
     Failure::Kernel(KernelError::Stale {
         stream: cover("shelf", 3),
         expected,
@@ -198,7 +198,7 @@ fn aggregate_handles_demands_the_nonce_back() {
     let failure = handle::<Shelf>(
         &store,
         &registry,
-        command(cover("shelf", 3), crate::next::pack(&unresolved))
+        command(cover("shelf", 3), crate::pack(&unresolved))
             .id(4)
             .expecting(1, ConflictResolution::AggregateHandles),
         &at(4),
@@ -226,7 +226,7 @@ fn aggregate_handles_demands_the_nonce_back() {
 #[test]
 fn outside_strict_a_lost_write_is_never_the_stale_key() {
     let registry = registry();
-    let store = crate::next::recording::Recording::new();
+    let store = crate::recording::Recording::new();
     for (n, item) in [(1u128, "a"), (2, "b")] {
         handle::<Shelf>(
             &store,
@@ -238,7 +238,7 @@ fn outside_strict_a_lost_write_is_never_the_stale_key() {
     }
     store.fail_write_with(
         0,
-        crate::next::StoreError::Conflict {
+        crate::StoreError::Conflict {
             stream: Box::new(cover("shelf", 3)),
             expected: 2,
             actual: 3,
@@ -324,10 +324,10 @@ fn unit_paths_follow_angzarrs_syntax() {
 
 #[test]
 fn a_state_without_conflict_units_changes_everything() {
-    use crate::next::State;
-    let state = crate::next::toys::account::AccountState::default();
+    use crate::State;
+    let state = crate::toys::account::AccountState::default();
     assert_eq!(
-        <crate::next::toys::account::AccountState as State>::changed(&state, &state),
+        <crate::toys::account::AccountState as State>::changed(&state, &state),
         Units::everything(),
         "the fail-safe default: never a blind merge"
     );
@@ -337,9 +337,9 @@ fn a_state_without_conflict_units_changes_everything() {
 fn a_fact_keeps_its_sent_correlation() {
     let registry = registry();
     let store = MemoryStore::new();
-    let payment = crate::next::toys::fact(
+    let payment = crate::toys::fact(
         cover("account", 1),
-        crate::next::toys::AccountFact::PaymentReceived(5).to_any(),
+        crate::toys::AccountFact::PaymentReceived(5).to_any(),
         "pi_c",
     )
     .correlated(4);
@@ -350,7 +350,7 @@ fn a_fact_keeps_its_sent_correlation() {
             .as_ref()
             .unwrap()
             .correlation_id,
-        Some(crate::next::toys::correlation(4))
+        Some(crate::toys::correlation(4))
     );
 }
 
@@ -368,13 +368,13 @@ impl prost::Name for OldNote {
 
 #[test]
 fn an_old_command_type_has_its_current_types_resolution() {
-    use crate::next::{Registry, Upcaster};
+    use crate::{Registry, Upcaster};
     let mut registry = Registry::new();
     registry
         .register::<Shelf>(
             Upcaster::new("shelf-upcaster", "shelf")
                 .rule::<OldNote, shelf::Note>(|old| Ok(shelf::Note { note: old.text })),
-            crate::next::toys::handlers::<crate::next::toys::Shelf>(),
+            crate::toys::handlers::<crate::toys::Shelf>(),
         )
         .unwrap();
     let store = MemoryStore::new();
@@ -388,7 +388,7 @@ fn an_old_command_type_has_its_current_types_resolution() {
         .unwrap();
     }
     let old = || {
-        crate::next::pack(&OldNote {
+        crate::pack(&OldNote {
             text: "restock".to_string(),
         })
     };
@@ -424,7 +424,7 @@ fn an_old_command_type_has_its_current_types_resolution() {
         .register::<Shelf>(
             Upcaster::new("shelf-upcaster", "shelf")
                 .rule::<OldNote, shelf::Note>(|_| Err(angzarr_diagnostic::Report::new("toy-no"))),
-            crate::next::toys::handlers::<crate::next::toys::Shelf>(),
+            crate::toys::handlers::<crate::toys::Shelf>(),
         )
         .unwrap();
     assert!(matches!(
@@ -444,9 +444,9 @@ fn an_old_command_type_has_its_current_types_resolution() {
 mod tally {
     use std::convert::Infallible;
 
-    use crate::next::angzarr_router::domain::DomainDispatch;
-    use crate::next::v1::{ConflictResolution, StateDescriptor, StateOptions};
-    use crate::next::{pack, Decoder, Domain, Payload, PayloadError, State};
+    use crate::angzarr_router::domain::DomainDispatch;
+    use crate::v1::{ConflictResolution, StateDescriptor, StateOptions};
+    use crate::{pack, Decoder, Domain, Payload, PayloadError, State};
 
     #[derive(Clone, PartialEq, prost::Message)]
     pub struct Tally {
@@ -494,11 +494,11 @@ mod tally {
     }
 
     impl Payload for Count {
-        fn to_any(&self) -> crate::next::Any {
+        fn to_any(&self) -> crate::Any {
             pack(self)
         }
 
-        fn from_any(any: &crate::next::Any) -> Result<Self, PayloadError> {
+        fn from_any(any: &crate::Any) -> Result<Self, PayloadError> {
             Decoder::new().on::<Count>(|c| c).decode(any)
         }
 
@@ -528,8 +528,8 @@ mod tally {
     /// counts.
     pub fn handlers(table: DomainDispatch<Tally>) -> DomainDispatch<Tally> {
         table.on_command("toy.tally.v1.Count", |_, _, _| {
-            Ok(Some(crate::next::v1::EventBook {
-                pages: vec![crate::next::v1::EventPage {
+            Ok(Some(crate::v1::EventBook {
+                pages: vec![crate::v1::EventPage {
                     payload: Some(pack(&Count {})),
                     ..Default::default()
                 }],
@@ -541,13 +541,13 @@ mod tally {
 
 #[test]
 fn a_commutative_command_at_the_head_has_no_window_whatever_its_units() {
-    use crate::next::{Registry, Upcaster};
+    use crate::{Registry, Upcaster};
     let mut registry = Registry::new();
     registry
         .register::<tally::Counter>(Upcaster::new("tally-upcaster", "tally"), tally::handlers)
         .unwrap();
     let store = MemoryStore::new();
-    let count = |n: u128| command(cover("tally", 1), crate::next::pack(&tally::Count {})).id(n);
+    let count = |n: u128| command(cover("tally", 1), crate::pack(&tally::Count {})).id(n);
     for n in 1..=2 {
         assert!(
             handle::<tally::Counter>(&store, &registry, count(n), &at(n as i64)).is_ok(),
@@ -586,18 +586,18 @@ fn a_commutative_command_at_the_head_has_no_window_whatever_its_units() {
 mod judged {
     use std::sync::Arc;
 
-    use crate::next::angzarr_router::error::CodedError;
-    use crate::next::angzarr_router::pb;
-    use crate::next::angzarr_router::router::CommandHandler;
-    use crate::next::toys::prelude::*;
-    use crate::next::toys::{at, command, cover, handlers, set, Edit, Shelf, ShelfState};
-    use crate::next::v1::ConflictResolution;
-    use crate::next::{Failure, Handled, KernelError, Registry};
+    use crate::angzarr_router::error::CodedError;
+    use crate::angzarr_router::pb;
+    use crate::angzarr_router::router::CommandHandler;
+    use crate::toys::prelude::*;
+    use crate::toys::{at, command, cover, handlers, set, Edit, Shelf, ShelfState};
+    use crate::v1::ConflictResolution;
+    use crate::{Failure, Handled, KernelError, Registry};
 
     use super::shelf_a_b;
 
     struct Rewritten {
-        inner: Box<dyn crate::next::angzarr_router::router::DynCommandHandler>,
+        inner: Box<dyn crate::angzarr_router::router::DynCommandHandler>,
         edit: fn(&mut pb::ConflictReport),
     }
 
@@ -619,7 +619,7 @@ mod judged {
     }
 
     fn rewritten(edit: fn(&mut pb::ConflictReport)) -> Registry {
-        let table = crate::next::route::table::<Shelf>(Arc::new(ShelfState::default), false);
+        let table = crate::route::table::<Shelf>(Arc::new(ShelfState::default), false);
         let inner = handlers::<Shelf>()(table);
         let mut registry = Registry::new();
         registry
@@ -629,11 +629,7 @@ mod judged {
                     inner: Box::new(inner),
                     edit,
                 },
-                crate::next::toys::descriptor_of::<Shelf>(
-                    crate::next::v1::ComponentKind::Aggregate,
-                    "v1",
-                    &[],
-                ),
+                crate::toys::descriptor_of::<Shelf>(crate::v1::ComponentKind::Aggregate, "v1", &[]),
             )
             .unwrap();
         registry
@@ -642,11 +638,11 @@ mod judged {
     fn handled(
         store: &MemoryStore,
         registry: &Registry,
-        book: crate::next::v1::CommandBook,
-    ) -> Result<Handled, Failure<crate::next::Rejected>> {
-        let log = crate::next::MemoryDeadLetters::new();
-        crate::next::Kernel::new(registry, &log)
-            .on_retryable(crate::next::toys::no_retries())
+        book: crate::v1::CommandBook,
+    ) -> Result<Handled, Failure<crate::Rejected>> {
+        let log = crate::MemoryDeadLetters::new();
+        crate::Kernel::new(registry, &log)
+            .on_retryable(crate::toys::no_retries())
             .handle_any(store, book, &at(3), &mut ())
             .ready()
     }

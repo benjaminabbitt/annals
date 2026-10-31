@@ -14,14 +14,14 @@ use angzarr_router::policy::PolicyDispatch;
 use angzarr_router::router::CommandHandler;
 
 use super::*;
-use crate::next::toys::prelude::*;
-use crate::next::toys::{at, command, command_id, cover, Edit};
-use crate::next::v1::{
+use crate::toys::prelude::*;
+use crate::toys::{at, command, command_id, cover, Edit};
+use crate::v1::{
     command_page, Command, CommandBook, CommandPage, ComponentDescriptor, ComponentKind,
     ConflictResolution, ContextualCommand, Cover, DeliveryOutcome, EventBook, EventPage, Outcome,
     StateDescriptor, StateOptions,
 };
-use crate::next::{
+use crate::{
     rejection, Any, Failure, Handled, Kernel, KernelError, Malformed, MemoryDeadLetters,
     Misconfigured, Registry,
 };
@@ -434,8 +434,8 @@ impl angzarr_router::router::ProjectorHandler for Quiet {
         "quiet"
     }
 
-    async fn dispatch(&self, _: &EventBook) -> Result<crate::next::v1::Projection, CodedError> {
-        Ok(crate::next::v1::Projection::default())
+    async fn dispatch(&self, _: &EventBook) -> Result<crate::v1::Projection, CodedError> {
+        Ok(crate::v1::Projection::default())
     }
 }
 
@@ -529,7 +529,7 @@ fn a_remote_command_keeps_the_correlation_its_caller_set() {
         .ready()
         .expect("handled remotely");
     let page = coordinator.handed()[0].page.clone().unwrap();
-    assert_eq!(page.correlation_id, Some(crate::next::toys::correlation(5)));
+    assert_eq!(page.correlation_id, Some(crate::toys::correlation(5)));
 }
 
 /// A policy's step into a remote domain carries its trigger's
@@ -565,5 +565,5 @@ fn a_remote_policy_step_carries_its_triggers_correlation() {
         .ready()
         .expect("handled");
     let page = coordinator.handed()[0].page.clone().unwrap();
-    assert_eq!(page.correlation_id, Some(crate::next::toys::correlation(6)));
+    assert_eq!(page.correlation_id, Some(crate::toys::correlation(6)));
 }

@@ -278,7 +278,7 @@ fn angzarr_embedded_reexports_the_angzarr_ports_catalog() {
 /// built with, so a reason the router adds is checked here without a list
 /// to keep.
 fn router_reasons() -> Vec<String> {
-    let reasons: Vec<String> = angzarr_embedded::next::reasons::router()
+    let reasons: Vec<String> = angzarr_embedded::reasons::router()
         .map(|reason| reason.as_str_name().to_string())
         .collect();
     assert!(!reasons.is_empty(), "no reasons read from RouterReason");
@@ -292,8 +292,8 @@ fn router_reasons() -> Vec<String> {
 /// `CodedError` under it.
 #[test]
 fn every_router_reason_has_its_own_code_and_message() {
-    use angzarr_embedded::next::angzarr_router::error::CodedError;
-    use angzarr_embedded::next::KernelError;
+    use angzarr_embedded::angzarr_router::error::CodedError;
+    use angzarr_embedded::KernelError;
 
     let mut problems = Vec::new();
     let mine: BTreeMap<String, Catalog> = catalogs(&mut problems)["angzarr-embedded"]
@@ -312,7 +312,7 @@ fn every_router_reason_has_its_own_code_and_message() {
         let error = KernelError::Router(CodedError {
             code: reason.clone(),
             extras: Default::default(),
-            grpc: angzarr_embedded::next::angzarr_router::error::GrpcCode::Internal,
+            grpc: angzarr_embedded::angzarr_router::error::GrpcCode::Internal,
             refusal: None,
         });
         if error.code() != expected {

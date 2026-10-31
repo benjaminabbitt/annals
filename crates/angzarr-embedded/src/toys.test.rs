@@ -20,17 +20,17 @@ use std::task::{Context, Poll, Waker};
 
 pub use angzarr_ports::memory::MemoryStore;
 
-use crate::next::angzarr_router::domain::{CommandContext, Conflict, DomainDispatch, FactRecord};
-use crate::next::markup::{Commands, PolicyContext};
-use crate::next::v1::{
+use crate::angzarr_router::domain::{CommandContext, Conflict, DomainDispatch, FactRecord};
+use crate::markup::{Commands, PolicyContext};
+use crate::v1::{
     command_page, Command, CommandBook, CommandPage, ConflictResolution, Cover, EventPage,
     EventRef, Fact, FactOrigin, Handling, StateDescriptor, StateOptions, Uuid,
 };
-use crate::next::{
+use crate::{
     ids, pack, Any, Decoder, Domain, Key, Misconfigured, Payload, PayloadError, Policy, Registry,
     Sampled, State, Timestamp, UnitPath, Units, Upcaster,
 };
-use crate::next::{EventStore, ListStreams, PositionKey, PositionStore, Store, StreamRef};
+use crate::{EventStore, ListStreams, PositionKey, PositionStore, Store, StreamRef};
 use angzarr_diagnostic::{Arg, Diagnostic, Report};
 
 /// A message under `package`, with its `prost::Name`.
@@ -253,11 +253,11 @@ fn toy_ctx<'a, D: Domain>(cctx: CommandContext) -> ToyCtx<'a, D> {
 pub fn handlers<D: Toy>() -> impl FnOnce(DomainDispatch<D::State>) -> DomainDispatch<D::State> {
     move |mut table| {
         for url in <D::Command as Payload>::type_urls() {
-            table = table.on_command(crate::next::type_name(&url), move |any, state, cctx| {
+            table = table.on_command(crate::type_name(&url), move |any, state, cctx| {
                 let cmd = D::Command::from_any(any).expect("the router routed it by type");
                 let ctx = toy_ctx::<D>(cctx);
                 match D::decide(&cmd, state, &ctx) {
-                    Ok(events) => Ok(Some(crate::next::v1::EventBook {
+                    Ok(events) => Ok(Some(crate::v1::EventBook {
                         pages: events
                             .iter()
                             .map(|e| EventPage {
@@ -267,26 +267,23 @@ pub fn handlers<D: Toy>() -> impl FnOnce(DomainDispatch<D::State>) -> DomainDisp
                             .collect(),
                         ..Default::default()
                     })),
-                    Err(rejection) => Err(crate::next::rejection(&rejection, None)),
+                    Err(rejection) => Err(crate::rejection(&rejection, None)),
                 }
             });
         }
         for url in <D::Fact as Payload>::type_urls() {
-            table = table.on_fact_with_context(
-                crate::next::type_name(&url),
-                move |any, state, cctx| {
-                    let fact = D::Fact::from_any(any).expect("the router routed it by type");
-                    let ctx = toy_ctx::<D>(cctx);
-                    let mut events = D::ingest(state, &fact, &ctx)
-                        .into_iter()
-                        .map(|e| e.to_any());
-                    let record = events.next().expect("a toy's fact records an event");
-                    Ok(FactRecord {
-                        fact: record,
-                        flags: events.collect(),
-                    })
-                },
-            );
+            table = table.on_fact_with_context(crate::type_name(&url), move |any, state, cctx| {
+                let fact = D::Fact::from_any(any).expect("the router routed it by type");
+                let ctx = toy_ctx::<D>(cctx);
+                let mut events = D::ingest(state, &fact, &ctx)
+                    .into_iter()
+                    .map(|e| e.to_any());
+                let record = events.next().expect("a toy's fact records an event");
+                Ok(FactRecord {
+                    fact: record,
+                    flags: events.collect(),
+                })
+            });
         }
         table
     }
@@ -302,11 +299,11 @@ pub fn register<D: Toy>(registry: &mut Registry, upcaster: Upcaster) -> Result<(
 /// `rules_version`, a process manager's instance started by the `starting`
 /// types (full names).
 pub fn descriptor_of<D: Domain>(
-    kind: crate::next::v1::ComponentKind,
+    kind: crate::v1::ComponentKind,
     rules_version: &str,
     starting: &[&str],
-) -> crate::next::v1::ComponentDescriptor {
-    crate::next::v1::ComponentDescriptor {
+) -> crate::v1::ComponentDescriptor {
+    crate::v1::ComponentDescriptor {
         name: D::NAME.to_string(),
         kind: kind as i32,
         rules_version: rules_version.to_string(),
@@ -1204,7 +1201,7 @@ impl Policy for Bookkeeping {
         &self,
         event: &Any,
         ctx: &PolicyContext,
-    ) -> Result<Option<Commands<Ledger>>, crate::next::markup::Report> {
+    ) -> Result<Option<Commands<Ledger>>, crate::markup::Report> {
         let cents = match AccountEvent::from_any(event) {
             Ok(AccountEvent::Deposited(cents)) => cents,
             Ok(_) => 0,
@@ -1227,9 +1224,9 @@ pub fn handle<D: Domain>(
     registry: &Registry,
     book: CommandBook,
     sampled: &Sampled,
-) -> Result<crate::next::Handled, crate::next::Failure<crate::next::Rejected>> {
-    let log = crate::next::MemoryDeadLetters::new();
-    let kernel = crate::next::Kernel::new(registry, &log).on_retryable(no_retries());
+) -> Result<crate::Handled, crate::Failure<crate::Rejected>> {
+    let log = crate::MemoryDeadLetters::new();
+    let kernel = crate::Kernel::new(registry, &log).on_retryable(no_retries());
     kernel
         .handle::<D, _, _>(store, book, sampled, &mut ())
         .ready()
@@ -1237,10 +1234,10 @@ pub fn handle<D: Domain>(
 
 /// Retrying turned off: what a test that is not about retrying runs with,
 /// so a retryable failure comes back at once, as it did before.
-pub fn no_retries() -> crate::next::OnRetryable {
-    crate::next::OnRetryable {
+pub fn no_retries() -> crate::OnRetryable {
+    crate::OnRetryable {
         max_retries: 0,
-        ..crate::next::OnRetryable::default()
+        ..crate::OnRetryable::default()
     }
 }
 
@@ -1256,7 +1253,7 @@ pub fn sref(stream: &Cover) -> StreamRef<'_> {
 }
 
 /// `stream` as stored, with its head: empty at 0 for no such stream.
-pub fn slice(store: &impl EventStore, stream: &Cover) -> crate::next::Slice {
+pub fn slice(store: &impl EventStore, stream: &Cover) -> crate::Slice {
     store.read(sref(stream), 0, None).ready().unwrap()
 }
 
@@ -1275,7 +1272,7 @@ pub fn position(store: &impl PositionStore, handler: &str, stream: &Cover) -> u6
 }
 
 /// Every payload in `books`, decoded as `E`, in order.
-pub fn payloads<E: Payload>(books: &[crate::next::v1::EventBook]) -> Vec<E> {
+pub fn payloads<E: Payload>(books: &[crate::v1::EventBook]) -> Vec<E> {
     books
         .iter()
         .flat_map(|b| &b.pages)
@@ -1323,8 +1320,8 @@ impl<F: Future> Ready for F {}
 // ---------------------------------------------------------------- dead letters
 
 /// angzarr's wire `Diagnostic`: a key, as the spec spells it, and its args.
-pub fn wire(code: &str, args: &[(&str, &str)]) -> crate::next::v1::Diagnostic {
-    crate::next::v1::Diagnostic {
+pub fn wire(code: &str, args: &[(&str, &str)]) -> crate::v1::Diagnostic {
+    crate::v1::Diagnostic {
         code: code.to_string(),
         args: args
             .iter()
@@ -1336,16 +1333,16 @@ pub fn wire(code: &str, args: &[(&str, &str)]) -> crate::next::v1::Diagnostic {
 /// The `processing_failed` details of a letter whose reason is `reason`
 /// (decision 14.48): the same Diagnostic as its failure.
 pub fn processing_failed(
-    reason: &crate::next::v1::Diagnostic,
+    reason: &crate::v1::Diagnostic,
     retry_count: u32,
     is_transient: bool,
-) -> crate::next::v1::angzarr_dead_letter::RejectionDetails {
-    crate::next::v1::angzarr_dead_letter::RejectionDetails::ProcessingFailed(
-        crate::next::v1::ProcessingFailedDetails {
+) -> crate::v1::angzarr_dead_letter::RejectionDetails {
+    crate::v1::angzarr_dead_letter::RejectionDetails::ProcessingFailed(
+        crate::v1::ProcessingFailedDetails {
             failure: Some(reason.clone()),
             retry_count,
             is_transient,
-            ..crate::next::v1::ProcessingFailedDetails::default()
+            ..crate::v1::ProcessingFailedDetails::default()
         },
     )
 }
@@ -1355,9 +1352,9 @@ pub fn processing_failed(
 pub fn sequence_mismatch(
     expected: u64,
     actual: u64,
-) -> crate::next::v1::angzarr_dead_letter::RejectionDetails {
-    crate::next::v1::angzarr_dead_letter::RejectionDetails::SequenceMismatch(
-        crate::next::v1::SequenceMismatchDetails {
+) -> crate::v1::angzarr_dead_letter::RejectionDetails {
+    crate::v1::angzarr_dead_letter::RejectionDetails::SequenceMismatch(
+        crate::v1::SequenceMismatchDetails {
             expected_sequence: expected,
             actual_sequence: actual,
         },
@@ -1365,9 +1362,7 @@ pub fn sequence_mismatch(
 }
 
 /// The one letter of `letters`.
-pub fn one_letter(
-    letters: Vec<crate::next::v1::AngzarrDeadLetter>,
-) -> crate::next::v1::AngzarrDeadLetter {
+pub fn one_letter(letters: Vec<crate::v1::AngzarrDeadLetter>) -> crate::v1::AngzarrDeadLetter {
     assert_eq!(letters.len(), 1, "one dead letter: {letters:?}");
     letters.into_iter().next().unwrap()
 }
@@ -1376,15 +1371,15 @@ pub fn one_letter(
 /// `kind`; its reason is `reason` and its one rejection detail `details`
 /// (decision 14.48), and its line leads with the reason's key.
 pub fn assert_letter(
-    letter: &crate::next::v1::AngzarrDeadLetter,
-    kind: crate::next::v1::ComponentKind,
-    reason: &crate::next::v1::Diagnostic,
-    details: crate::next::v1::angzarr_dead_letter::RejectionDetails,
+    letter: &crate::v1::AngzarrDeadLetter,
+    kind: crate::v1::ComponentKind,
+    reason: &crate::v1::Diagnostic,
+    details: crate::v1::angzarr_dead_letter::RejectionDetails,
 ) {
     assert_eq!(letter.source_component_kind(), kind, "{letter:?}");
     assert_eq!(letter.reason.as_ref(), Some(reason), "{letter:?}");
     assert_eq!(letter.rejection_details, Some(details), "{letter:?}");
-    let line = crate::next::dead_letter_line(letter);
+    let line = crate::dead_letter_line(letter);
     assert!(
         line.contains(&format!(": {} ", reason.code))
             || line.ends_with(&format!(": {}", reason.code)),
@@ -1396,5 +1391,5 @@ pub fn assert_letter(
 /// read it, and the ports' traits, so their methods are in scope.
 pub mod prelude {
     pub use super::{pages, position, slice, sref, streams, MemoryStore, Ready};
-    pub use crate::next::{EventStore, PositionStore, Purge, SnapshotStore, Write};
+    pub use crate::{EventStore, PositionStore, Purge, SnapshotStore, Write};
 }

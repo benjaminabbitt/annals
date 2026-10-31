@@ -16,16 +16,14 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use angzarr_diagnostic::Diagnostic;
-use angzarr_embedded::next::angzarr_router::error::{CodedError, GrpcCode};
-use angzarr_embedded::next::angzarr_router::router::{
-    CommandHandler, PolicyComponent, ProjectorHandler,
-};
-use angzarr_embedded::next::v1::{
+use angzarr_embedded::angzarr_router::error::{CodedError, GrpcCode};
+use angzarr_embedded::angzarr_router::router::{CommandHandler, PolicyComponent, ProjectorHandler};
+use angzarr_embedded::v1::{
     command_page, Command, CommandBook, CommandPage, ComponentDescriptor, ComponentKind,
     ConflictResolution, ContextualCommand, Cover, EventBook, EventPage, Fact, FactOrigin,
     StateDescriptor, StateOptions, Uuid,
 };
-use angzarr_embedded::next::{
+use angzarr_embedded::{
     Any, EventStore, Failure, Handled, Kernel, MemoryDeadLetters, OnRetryable, Registry, Sampled,
     StreamRef, Timestamp,
 };
@@ -585,7 +583,7 @@ fn projected(log_path: &Path) -> (Host, Registry) {
 fn quick() -> OnRetryable {
     OnRetryable {
         max_retries: 3,
-        max_race_runs: angzarr_embedded::next::DEFAULT_RACE_RUNS,
+        max_race_runs: angzarr_embedded::DEFAULT_RACE_RUNS,
         initial_backoff: Duration::from_millis(5),
         multiplier: 1.0,
         max_backoff: Duration::from_millis(5),
@@ -762,7 +760,7 @@ fn a_remote_projectors_retryable_failure_is_dead_lettered_at_the_cap() {
 /// `processing_failed` with `retry_count` and `is_transient` (decision
 /// 14.48).
 fn processing_failed(log: &MemoryDeadLetters, key: &str, retry_count: u32, is_transient: bool) {
-    use angzarr_embedded::next::v1::angzarr_dead_letter::{Payload, RejectionDetails};
+    use angzarr_embedded::v1::angzarr_dead_letter::{Payload, RejectionDetails};
     let letters = log.letters();
     assert_eq!(letters.len(), 1, "{letters:?}");
     let letter = &letters[0];
@@ -770,7 +768,7 @@ fn processing_failed(log: &MemoryDeadLetters, key: &str, retry_count: u32, is_tr
     assert_eq!(reason.code, key, "{letter:?}");
     assert_eq!(
         letter.source_component_kind(),
-        angzarr_embedded::next::v1::ComponentKind::Projector,
+        angzarr_embedded::v1::ComponentKind::Projector,
         "{letter:?}"
     );
     let Some(RejectionDetails::ProcessingFailed(details)) = &letter.rejection_details else {
@@ -993,16 +991,16 @@ fn a_remote_upcaster_that_is_down_is_retryable() {
     assert!(
         matches!(
             &failure,
-            Failure::Kernel(angzarr_embedded::next::KernelError::Upcast {
-                error: angzarr_embedded::next::UpcastError::Unavailable { .. },
+            Failure::Kernel(angzarr_embedded::KernelError::Upcast {
+                error: angzarr_embedded::UpcastError::Unavailable { .. },
                 ..
             })
         ),
         "{failure:?}"
     );
-    assert_eq!(failure.recovery(), angzarr_embedded::next::Recovery::Retry);
-    let Failure::Kernel(angzarr_embedded::next::KernelError::Upcast {
-        error: angzarr_embedded::next::UpcastError::Unavailable { cause },
+    assert_eq!(failure.recovery(), angzarr_embedded::Recovery::Retry);
+    let Failure::Kernel(angzarr_embedded::KernelError::Upcast {
+        error: angzarr_embedded::UpcastError::Unavailable { cause },
         ..
     }) = &failure
     else {
@@ -1033,8 +1031,8 @@ fn a_remote_upcasters_failing_rule_is_a_bug() {
     ))
     .err()
     .expect("not delivered");
-    let Failure::Kernel(angzarr_embedded::next::KernelError::Upcast {
-        error: angzarr_embedded::next::UpcastError::Rule { source, error },
+    let Failure::Kernel(angzarr_embedded::KernelError::Upcast {
+        error: angzarr_embedded::UpcastError::Rule { source, error },
         ..
     }) = &failure
     else {
@@ -1048,7 +1046,7 @@ fn a_remote_upcasters_failing_rule_is_a_bug() {
             .any(|(name, arg)| *name == "cause" && format!("{arg:?}").contains("UPCAST_RULE_BROKE")),
         "the child's reason: {error:?}"
     );
-    assert_eq!(failure.recovery(), angzarr_embedded::next::Recovery::Bug);
+    assert_eq!(failure.recovery(), angzarr_embedded::Recovery::Bug);
 }
 
 /// An upcaster that names no domain to upcast is refused at start.
@@ -1069,8 +1067,8 @@ fn an_upcaster_naming_no_domain_is_refused() {
 fn not_serving<R>(failure: &Failure<R>) -> bool {
     matches!(
         failure,
-        Failure::Kernel(angzarr_embedded::next::KernelError::Upcast {
-            error: angzarr_embedded::next::UpcastError::Unavailable { .. },
+        Failure::Kernel(angzarr_embedded::KernelError::Upcast {
+            error: angzarr_embedded::UpcastError::Unavailable { .. },
             ..
         })
     )
@@ -1135,7 +1133,7 @@ fn a_sidecar_is_up_only_while_its_health_reports_serving() {
     assert_eq!(turned(b""), Ok(false), "came up NOT_SERVING");
     let refused = sit(1).expect("not delivered");
     assert!(not_serving(&refused), "{refused:?}");
-    assert_eq!(refused.recovery(), angzarr_embedded::next::Recovery::Retry);
+    assert_eq!(refused.recovery(), angzarr_embedded::Recovery::Retry);
     assert!(payloads(&store, &cover("table")).is_empty());
 
     assert_eq!(turned(b"1"), Ok(true), "turned SERVING");

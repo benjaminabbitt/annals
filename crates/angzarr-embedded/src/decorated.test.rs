@@ -37,18 +37,18 @@
 use std::convert::Infallible;
 use std::fmt;
 
-use ::angzarr_embedded::next::markup::v1::{refusal_response, RefusalResponse};
-use ::angzarr_embedded::next::markup::{
+use ::angzarr_embedded::markup::v1::{refusal_response, RefusalResponse};
+use ::angzarr_embedded::markup::{
     self, assert_step_idempotent, BusinessStatus, CommandContext, CommandRefused, Commands,
     Context, DomainMessage, Emit, Failed, Policy, PolicyContext, ProcessManager, ProjectionContext,
     Record, Refusal, Refuses, Refusing, Rejection, RetryableStatus, TypeName, STEP_LIMIT,
 };
-use ::angzarr_embedded::next::v1::event_meta::Causation;
-use ::angzarr_embedded::next::v1::{
+use ::angzarr_embedded::v1::event_meta::Causation;
+use ::angzarr_embedded::v1::{
     command_page, Command, CommandBook, CommandPage, ConflictResolution, Cover, EventBook,
     EventPage, EventRef, Fact, FactOrigin, StateDescriptor, StateOptions, Uuid,
 };
-use ::angzarr_embedded::next::{
+use ::angzarr_embedded::{
     pack, type_name, Any, Decoder, Domain, Envelope, Executed, Failure, Handled, KernelError,
     MemoryDeadLetters, Payload, PayloadError, Recovery, Registry, Rejected, Sampled, State,
     StepError, Stream, Timestamp, Upcaster, WireError,
@@ -64,7 +64,7 @@ use angzarr_embedded_macros::{
 /// The prost messages the toys' types travel as. (A fixture standing in
 /// for angzarr's generated wire types.)
 mod wire {
-    use ::angzarr_embedded::next::Timestamp;
+    use ::angzarr_embedded::Timestamp;
 
     macro_rules! message {
         ($package:literal, $name:ident { $($(#[$attr:meta])* $field:ident : $ty:ty),* $(,)? }) => {
@@ -1428,8 +1428,8 @@ impl Domain for Tally {
 /// The tally's handler, written by hand as angzarr-router's table: every
 /// count counts.
 fn tally_handlers(
-    table: ::angzarr_embedded::next::angzarr_router::domain::DomainDispatch<TallyState>,
-) -> ::angzarr_embedded::next::angzarr_router::domain::DomainDispatch<TallyState> {
+    table: ::angzarr_embedded::angzarr_router::domain::DomainDispatch<TallyState>,
+) -> ::angzarr_embedded::angzarr_router::domain::DomainDispatch<TallyState> {
     table.on_command("toy.tally.cmd.v1.Count", |_, _, _| {
         Ok(Some(EventBook {
             pages: vec![EventPage {
@@ -2462,7 +2462,7 @@ mod failed {
     /// its args `cause.<arg>`, and its one detail `processing_failed`,
     /// never retried, not transient (decision 14.48); no English.
     fn broke_at(log: &MemoryDeadLetters, seat: i64) {
-        use crate::next::toys::{assert_letter, one_letter, processing_failed, wire};
+        use crate::toys::{assert_letter, one_letter, processing_failed, wire};
         let lines = log.lines();
         assert_eq!(lines.len(), 1, "dead-lettered once: {lines:?}");
         let cause = format!(
@@ -2483,7 +2483,7 @@ mod failed {
         );
         assert_letter(
             &one_letter(log.letters()),
-            ::angzarr_embedded::next::v1::ComponentKind::Aggregate,
+            ::angzarr_embedded::v1::ComponentKind::Aggregate,
             &reason,
             processing_failed(&reason, 0, false),
         );
@@ -3097,10 +3097,10 @@ fn handle_in<D: Domain>(
         command_id: Uuid::from_bytes([0x70 | n; 16]),
     };
     ready(
-        ::angzarr_embedded::next::Kernel::new(registry, log)
-            .on_retryable(::angzarr_embedded::next::OnRetryable {
+        ::angzarr_embedded::Kernel::new(registry, log)
+            .on_retryable(::angzarr_embedded::OnRetryable {
                 max_retries: 0,
-                ..::angzarr_embedded::next::OnRetryable::default()
+                ..::angzarr_embedded::OnRetryable::default()
             })
             .handle::<D, _, _>(store, book, &sampled, &mut ()),
     )
@@ -3108,14 +3108,14 @@ fn handle_in<D: Domain>(
 
 /// The stored pages of the stream at `cover`; `None` when it has none.
 fn pages(store: &Mem, cover: &Cover) -> Option<Vec<EventPage>> {
-    use ::angzarr_embedded::next::EventStore;
-    let stream = ::angzarr_embedded::next::StreamRef::try_from(cover).unwrap();
+    use ::angzarr_embedded::EventStore;
+    let stream = ::angzarr_embedded::StreamRef::try_from(cover).unwrap();
     let slice = ready(store.read(stream, 0, None)).unwrap();
     (slice.next_sequence > 0).then_some(slice.pages)
 }
 
 /// The store the decorated domains run on: angzarr-ports' in memory.
-type Mem = ::angzarr_embedded::next::angzarr_ports::memory::MemoryStore;
+type Mem = ::angzarr_embedded::angzarr_ports::memory::MemoryStore;
 
 /// The type names of the events the buy-in of correlation `c` recorded;
 /// `None` when it has no stream.
@@ -3594,7 +3594,7 @@ mod policy_errors {
 /// resolution.
 mod handler_context {
     use super::*;
-    use ::angzarr_embedded::next::v1::Handling;
+    use ::angzarr_embedded::v1::Handling;
 
     fn pot() -> Stream<Pot> {
         Stream::new(root(), None).unwrap()
@@ -3652,7 +3652,7 @@ mod handler_context {
     /// 14.48), and nothing recorded.
     #[test]
     fn an_aggregate_handles_handler_that_never_acknowledges_is_unresolved() {
-        use crate::next::toys::{assert_letter, one_letter, sequence_mismatch, wire};
+        use crate::toys::{assert_letter, one_letter, sequence_mismatch, wire};
         let registry = registry();
         let mut pot = pot();
         execute(&mut pot, &registry, 1, staking(1, 5, true, 0)).unwrap();
@@ -3678,7 +3678,7 @@ mod handler_context {
         let letter = one_letter(log.letters());
         assert_letter(
             &letter,
-            ::angzarr_embedded::next::v1::ComponentKind::Aggregate,
+            ::angzarr_embedded::v1::ComponentKind::Aggregate,
             &wire("COORDINATOR_REASON_CONFLICT_UNRESOLVED", &[]),
             sequence_mismatch(0, 1),
         );
@@ -3734,7 +3734,7 @@ mod handler_context {
 
 mod typed_refusals {
     use super::*;
-    use ::angzarr_embedded::next::v1::Diagnostic as WireDiagnostic;
+    use ::angzarr_embedded::v1::Diagnostic as WireDiagnostic;
 
     /// As [`BuyInWallet`], hand-written, and answering no refusal: its
     /// refused hold fails its step and is dead-lettered.
@@ -3768,9 +3768,9 @@ mod typed_refusals {
     /// the refusal object itself, kept whole (decision 14.48, C-0733).
     #[test]
     fn a_typed_refusal_dead_letters_its_object_as_command_refused() {
-        use crate::next::toys::{one_letter, wire};
-        use ::angzarr_embedded::next::v1::angzarr_dead_letter::RejectionDetails;
-        use ::angzarr_embedded::next::v1::CommandRefusedDetails;
+        use crate::toys::{one_letter, wire};
+        use ::angzarr_embedded::v1::angzarr_dead_letter::RejectionDetails;
+        use ::angzarr_embedded::v1::CommandRefusedDetails;
         let mut registry = buy_ins();
         registry.policy(QuietBuyInWallet);
         let store = Mem::new();
@@ -3789,9 +3789,9 @@ mod typed_refusals {
             "ROUTER_REASON_COMMAND_REFUSED",
             &[("refusal_type", "toy.wallet.v1.InsufficientFunds")],
         );
-        crate::next::toys::assert_letter(
+        crate::toys::assert_letter(
             &letter,
-            ::angzarr_embedded::next::v1::ComponentKind::Policy,
+            ::angzarr_embedded::v1::ComponentKind::Policy,
             &reason,
             RejectionDetails::CommandRefused(CommandRefusedDetails {
                 refusal_type: "toy.wallet.v1.InsufficientFunds".to_string(),
@@ -4244,30 +4244,28 @@ fn settle_in<D: Domain>(
     log: &MemoryDeadLetters,
     n: u8,
     book: CommandBook,
-) -> Result<::angzarr_embedded::next::Recorded, Failure<Rejected>> {
+) -> Result<::angzarr_embedded::Recorded, Failure<Rejected>> {
     let sampled = Sampled {
         now: at(i64::from(n)),
         command_id: Uuid::from_bytes([0x70 | n; 16]),
     };
     let handled = ready(
-        ::angzarr_embedded::next::Kernel::new(registry, log)
-            .on_retryable(::angzarr_embedded::next::OnRetryable {
+        ::angzarr_embedded::Kernel::new(registry, log)
+            .on_retryable(::angzarr_embedded::OnRetryable {
                 max_retries: 0,
-                ..::angzarr_embedded::next::OnRetryable::default()
+                ..::angzarr_embedded::OnRetryable::default()
             })
             .handle::<D, _, _>(store, book, &sampled, &mut ()),
     )?;
     match handled {
         Handled::Applied(recorded) => Ok(recorded),
-        Handled::Duplicate(_) | Handled::Parked => {
-            Ok(::angzarr_embedded::next::Recorded::default())
-        }
+        Handled::Duplicate(_) | Handled::Parked => Ok(::angzarr_embedded::Recorded::default()),
     }
 }
 
 /// The covers of the steps `settled` committed, in commit order, each
 /// with the type names of its events.
-fn steps(settled: &::angzarr_embedded::next::Recorded) -> Vec<(String, Vec<String>)> {
+fn steps(settled: &::angzarr_embedded::Recorded) -> Vec<(String, Vec<String>)> {
     settled
         .steps()
         .iter()
@@ -4383,13 +4381,11 @@ mod refusal_flow {
             now: at(9),
             command_id: Uuid::from_bytes([0x79; 16]),
         };
-        let resumed = ready(
-            ::angzarr_embedded::next::Kernel::new(&registry, &log).resume(
-                &store,
-                &sampled,
-                &mut (),
-            ),
-        )
+        let resumed = ready(::angzarr_embedded::Kernel::new(&registry, &log).resume(
+            &store,
+            &sampled,
+            &mut (),
+        ))
         .expect("nothing left owed");
         assert!(
             resumed.steps().is_empty(),
@@ -4404,7 +4400,7 @@ mod refusal_flow {
     /// again and dead-letters it again.
     #[test]
     fn under_stay_a_refusal_handlers_error_holds_the_policys_position() {
-        use ::angzarr_embedded::next::{Kernel, OnPolicyBug};
+        use ::angzarr_embedded::{Kernel, OnPolicyBug};
         let (registry, store) = funded(false, 7);
         let log = MemoryDeadLetters::new();
         let kernel = Kernel::new(&registry, &log).on_policy_bug(OnPolicyBug::Stay);
@@ -4460,7 +4456,7 @@ mod refusal_flow {
         let log = MemoryDeadLetters::new();
         settle_in::<BuyIn>(&store, &registry, &log, 2, start(&correlation(3), 2, 30)).unwrap();
         let pages = pages(&store, &buy_in_cover(&correlation(3))).expect("the buy-in");
-        let hold_id = ::angzarr_embedded::next::ids::policy_command_id(
+        let hold_id = ::angzarr_embedded::ids::policy_command_id(
             &trigger(&correlation(3)),
             "buyin-wallet",
             0,
@@ -4661,10 +4657,10 @@ impl SharedBuyIn {
 
 mod router {
     use super::*;
-    use ::angzarr_embedded::next::angzarr_router::error::HandlerError;
-    use ::angzarr_embedded::next::angzarr_router::pb;
-    use ::angzarr_embedded::next::angzarr_router::policy::PolicyDispatch;
-    use ::angzarr_embedded::next::StepError;
+    use ::angzarr_embedded::angzarr_router::error::HandlerError;
+    use ::angzarr_embedded::angzarr_router::pb;
+    use ::angzarr_embedded::angzarr_router::policy::PolicyDispatch;
+    use ::angzarr_embedded::StepError;
 
     /// The router's reason (its `CodedError.code`) for `failure`, at the
     /// origin or down the chain; `None` for a failure the router did not
@@ -4976,7 +4972,7 @@ mod router {
     /// `Noted` event.
     struct Remote;
 
-    impl ::angzarr_embedded::next::angzarr_router::router::CommandHandler for Remote {
+    impl ::angzarr_embedded::angzarr_router::router::CommandHandler for Remote {
         fn name(&self) -> &str {
             "remote"
         }
@@ -4988,10 +4984,8 @@ mod router {
         async fn dispatch(
             &self,
             req: &pb::ContextualCommand,
-        ) -> Result<
-            pb::CommandHandlerResponse,
-            ::angzarr_embedded::next::angzarr_router::error::CodedError,
-        > {
+        ) -> Result<pb::CommandHandlerResponse, ::angzarr_embedded::angzarr_router::error::CodedError>
+        {
             let next = req.events.as_ref().map_or(0, |b| b.next_sequence);
             Ok(pb::CommandHandlerResponse {
                 conflict: None,
@@ -5036,7 +5030,7 @@ mod router {
     /// writes what it answers, and deduplicates a retry.
     #[test]
     fn a_boxed_command_handler_registers_as_a_domain() {
-        use ::angzarr_embedded::next::angzarr_router::router::DynCommandHandler;
+        use ::angzarr_embedded::angzarr_router::router::DynCommandHandler;
         let mut registry = Registry::new();
         let remote: Box<dyn DynCommandHandler> = Box::new(Remote);
         registry
@@ -5044,7 +5038,7 @@ mod router {
             .unwrap();
         let store = Mem::new();
         let log = MemoryDeadLetters::new();
-        let kernel = ::angzarr_embedded::next::Kernel::new(&registry, &log);
+        let kernel = ::angzarr_embedded::Kernel::new(&registry, &log);
         let note = || send("remote", 4, any(Note {}), Some(correlation(4)));
         let sampled = Sampled {
             now: at(9),
@@ -5081,7 +5075,7 @@ mod router {
         );
         assert_eq!(
             registry.command_handler("remote", Remote, remote_descriptor()),
-            Err(::angzarr_embedded::next::Misconfigured::AlreadyRegistered {
+            Err(::angzarr_embedded::Misconfigured::AlreadyRegistered {
                 domain: "remote".to_string()
             })
         );
@@ -5091,7 +5085,7 @@ mod router {
     /// input it is handed.
     struct Clocked(std::sync::Arc<std::sync::Mutex<Vec<Option<Timestamp>>>>);
 
-    impl ::angzarr_embedded::next::angzarr_router::router::CommandHandler for Clocked {
+    impl ::angzarr_embedded::angzarr_router::router::CommandHandler for Clocked {
         fn name(&self) -> &str {
             "remote"
         }
@@ -5103,10 +5097,8 @@ mod router {
         async fn dispatch(
             &self,
             req: &pb::ContextualCommand,
-        ) -> Result<
-            pb::CommandHandlerResponse,
-            ::angzarr_embedded::next::angzarr_router::error::CodedError,
-        > {
+        ) -> Result<pb::CommandHandlerResponse, ::angzarr_embedded::angzarr_router::error::CodedError>
+        {
             self.0.lock().unwrap().push(req.recorded_at);
             Remote.dispatch(req).await
         }
@@ -5130,7 +5122,7 @@ mod router {
             .unwrap();
         let store = Mem::new();
         let log = MemoryDeadLetters::new();
-        let kernel = ::angzarr_embedded::next::Kernel::new(&registry, &log);
+        let kernel = ::angzarr_embedded::Kernel::new(&registry, &log);
         let sampled = |now| Sampled {
             now,
             command_id: Uuid::from_bytes([0x74; 16]),
@@ -5163,7 +5155,7 @@ mod router {
         up: std::sync::Arc<std::sync::atomic::AtomicBool>,
     }
 
-    impl ::angzarr_embedded::next::angzarr_router::router::CommandHandler for Flaky {
+    impl ::angzarr_embedded::angzarr_router::router::CommandHandler for Flaky {
         fn name(&self) -> &str {
             "remote"
         }
@@ -5175,11 +5167,9 @@ mod router {
         async fn dispatch(
             &self,
             req: &pb::ContextualCommand,
-        ) -> Result<
-            pb::CommandHandlerResponse,
-            ::angzarr_embedded::next::angzarr_router::error::CodedError,
-        > {
-            use ::angzarr_embedded::next::angzarr_router::error::{CodedError, GrpcCode};
+        ) -> Result<pb::CommandHandlerResponse, ::angzarr_embedded::angzarr_router::error::CodedError>
+        {
+            use ::angzarr_embedded::angzarr_router::error::{CodedError, GrpcCode};
             if self.up.load(std::sync::atomic::Ordering::SeqCst) {
                 return Remote.dispatch(req).await;
             }
@@ -5202,8 +5192,8 @@ mod router {
     /// resume runs the step again once the handler is reachable.
     #[test]
     fn an_unreachable_remote_handler_is_retried_by_position() {
-        use ::angzarr_embedded::next::angzarr_router::router::DynCommandHandler;
-        use ::angzarr_embedded::next::StepError;
+        use ::angzarr_embedded::angzarr_router::router::DynCommandHandler;
+        use ::angzarr_embedded::StepError;
         let up = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
         let mut registry = registry();
         let flaky: Box<dyn DynCommandHandler> = Box::new(Flaky { up: up.clone() });
@@ -5233,10 +5223,10 @@ mod router {
         );
         let store = Mem::new();
         let log = MemoryDeadLetters::new();
-        let kernel = ::angzarr_embedded::next::Kernel::new(&registry, &log).on_retryable(
-            ::angzarr_embedded::next::OnRetryable {
+        let kernel = ::angzarr_embedded::Kernel::new(&registry, &log).on_retryable(
+            ::angzarr_embedded::OnRetryable {
                 max_retries: 0,
-                ..::angzarr_embedded::next::OnRetryable::default()
+                ..::angzarr_embedded::OnRetryable::default()
             },
         );
         let sampled = Sampled {
@@ -5315,7 +5305,7 @@ mod router {
         calls: std::sync::Arc<std::sync::atomic::AtomicUsize>,
     }
 
-    impl ::angzarr_embedded::next::angzarr_router::router::CommandHandler for Recovering {
+    impl ::angzarr_embedded::angzarr_router::router::CommandHandler for Recovering {
         fn name(&self) -> &str {
             "remote"
         }
@@ -5327,10 +5317,8 @@ mod router {
         async fn dispatch(
             &self,
             req: &pb::ContextualCommand,
-        ) -> Result<
-            pb::CommandHandlerResponse,
-            ::angzarr_embedded::next::angzarr_router::error::CodedError,
-        > {
+        ) -> Result<pb::CommandHandlerResponse, ::angzarr_embedded::angzarr_router::error::CodedError>
+        {
             use std::sync::atomic::Ordering::SeqCst;
             self.calls.fetch_add(1, SeqCst);
             let down = self
@@ -5368,7 +5356,7 @@ mod router {
         }
     }
 
-    impl ::angzarr_embedded::next::Wait for Waits {
+    impl ::angzarr_embedded::Wait for Waits {
         fn wait(
             &self,
             backoff: std::time::Duration,
@@ -5384,8 +5372,8 @@ mod router {
 
     /// Retries 3 times, from 10 ms, tripling, at most 50 ms apart, up to
     /// half of each wait taken off at random.
-    fn capped() -> ::angzarr_embedded::next::OnRetryable {
-        ::angzarr_embedded::next::OnRetryable {
+    fn capped() -> ::angzarr_embedded::OnRetryable {
+        ::angzarr_embedded::OnRetryable {
             max_retries: 3,
             max_race_runs: 10,
             initial_backoff: std::time::Duration::from_millis(10),
@@ -5398,7 +5386,7 @@ mod router {
     /// The wallets' registry, with `remote` as the remote domain, and a
     /// policy sending it a `Note` on each wallet's `Held`.
     fn remote_registry(
-        remote: Box<dyn ::angzarr_embedded::next::angzarr_router::router::DynCommandHandler>,
+        remote: Box<dyn ::angzarr_embedded::angzarr_router::router::DynCommandHandler>,
     ) -> Registry {
         let mut registry = registry();
         registry
@@ -5451,11 +5439,11 @@ mod router {
     /// ms, doubling, at most 5 s apart, a fifth of each wait at random.
     #[test]
     fn retrying_is_on_by_default() {
-        use ::angzarr_embedded::next::OnRetryable;
+        use ::angzarr_embedded::OnRetryable;
         use std::time::Duration;
         let registry = registry();
         let log = MemoryDeadLetters::new();
-        let kernel = ::angzarr_embedded::next::Kernel::new(&registry, &log);
+        let kernel = ::angzarr_embedded::Kernel::new(&registry, &log);
         assert_eq!(
             kernel.retryable(),
             OnRetryable {
@@ -5483,7 +5471,7 @@ mod router {
         let store = Mem::new();
         let log = MemoryDeadLetters::new();
         let waits = Waits::drawing(0.5);
-        let kernel = ::angzarr_embedded::next::Kernel::new(&registry, &log)
+        let kernel = ::angzarr_embedded::Kernel::new(&registry, &log)
             .on_retryable(capped())
             .wait_with(&waits);
         let failed = ready(kernel.handle_any(
@@ -5516,8 +5504,8 @@ mod router {
         let store = Mem::new();
         let log = MemoryDeadLetters::new();
         let waits = Waits::drawing(0.0);
-        let kernel = ::angzarr_embedded::next::Kernel::new(&registry, &log)
-            .on_retryable(::angzarr_embedded::next::OnRetryable {
+        let kernel = ::angzarr_embedded::Kernel::new(&registry, &log)
+            .on_retryable(::angzarr_embedded::OnRetryable {
                 max_retries: 0,
                 ..capped()
             })
@@ -5540,14 +5528,14 @@ mod router {
     /// again), or at it under `Stay` (a resume does).
     #[test]
     fn a_policy_steps_retryable_failure_is_dead_lettered_after_the_cap() {
-        use ::angzarr_embedded::next::{OnPolicyBug, StepError};
+        use ::angzarr_embedded::{OnPolicyBug, StepError};
         use std::sync::atomic::Ordering::SeqCst;
         for (policy_bug, resumed_calls) in [(OnPolicyBug::MovePast, 4), (OnPolicyBug::Stay, 8)] {
             let (registry, calls) = recovering(usize::MAX);
             let store = Mem::new();
             let log = MemoryDeadLetters::new();
             let waits = Waits::drawing(0.0);
-            let kernel = ::angzarr_embedded::next::Kernel::new(&registry, &log)
+            let kernel = ::angzarr_embedded::Kernel::new(&registry, &log)
                 .on_retryable(capped())
                 .wait_with(&waits)
                 .on_policy_bug(policy_bug);
@@ -5599,7 +5587,7 @@ mod router {
         let store = Mem::new();
         let log = MemoryDeadLetters::new();
         let waits = Waits::drawing(0.0);
-        let kernel = ::angzarr_embedded::next::Kernel::new(&registry, &log)
+        let kernel = ::angzarr_embedded::Kernel::new(&registry, &log)
             .on_retryable(capped())
             .wait_with(&waits);
         let handled = ready(kernel.handle_any(
@@ -5627,11 +5615,11 @@ mod router {
     /// A remote handler that fails every command with `error`, counting
     /// its dispatches.
     struct Counted {
-        error: ::angzarr_embedded::next::angzarr_router::error::CodedError,
+        error: ::angzarr_embedded::angzarr_router::error::CodedError,
         calls: std::sync::Arc<std::sync::atomic::AtomicUsize>,
     }
 
-    impl ::angzarr_embedded::next::angzarr_router::router::CommandHandler for Counted {
+    impl ::angzarr_embedded::angzarr_router::router::CommandHandler for Counted {
         fn name(&self) -> &str {
             "remote"
         }
@@ -5643,10 +5631,8 @@ mod router {
         async fn dispatch(
             &self,
             _: &pb::ContextualCommand,
-        ) -> Result<
-            pb::CommandHandlerResponse,
-            ::angzarr_embedded::next::angzarr_router::error::CodedError,
-        > {
+        ) -> Result<pb::CommandHandlerResponse, ::angzarr_embedded::angzarr_router::error::CodedError>
+        {
             self.calls.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
             Err(self.error.clone())
         }
@@ -5656,11 +5642,11 @@ mod router {
     /// own `code` and status `grpc`; and its dispatch count.
     fn counted(
         code: &str,
-        grpc: ::angzarr_embedded::next::angzarr_router::error::GrpcCode,
+        grpc: ::angzarr_embedded::angzarr_router::error::GrpcCode,
     ) -> (Registry, std::sync::Arc<std::sync::atomic::AtomicUsize>) {
         let calls = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
         let registry = remote_registry(Box::new(Counted {
-            error: ::angzarr_embedded::next::angzarr_router::error::CodedError {
+            error: ::angzarr_embedded::angzarr_router::error::CodedError {
                 code: code.to_string(),
                 extras: Default::default(),
                 grpc,
@@ -5677,13 +5663,13 @@ mod router {
     /// 2026-10-29).
     #[test]
     fn an_aborted_answer_goes_back_to_an_outside_caller_at_once() {
-        use ::angzarr_embedded::next::angzarr_router::error::GrpcCode;
+        use ::angzarr_embedded::angzarr_router::error::GrpcCode;
         use std::sync::atomic::Ordering::SeqCst;
         let (registry, calls) = counted("SEAT_MOVED", GrpcCode::Aborted);
         let store = Mem::new();
         let log = MemoryDeadLetters::new();
         let waits = Waits::drawing(0.0);
-        let kernel = ::angzarr_embedded::next::Kernel::new(&registry, &log)
+        let kernel = ::angzarr_embedded::Kernel::new(&registry, &log)
             .on_retryable(capped())
             .wait_with(&waits);
         let failed = ready(kernel.handle_any(
@@ -5703,13 +5689,13 @@ mod router {
     /// dead-letters it.
     #[test]
     fn a_policy_steps_aborted_answer_is_retried_then_dead_lettered() {
-        use ::angzarr_embedded::next::angzarr_router::error::GrpcCode;
+        use ::angzarr_embedded::angzarr_router::error::GrpcCode;
         use std::sync::atomic::Ordering::SeqCst;
         let (registry, calls) = counted("SEAT_MOVED", GrpcCode::Aborted);
         let store = Mem::new();
         let log = MemoryDeadLetters::new();
         let waits = Waits::drawing(0.0);
-        let kernel = ::angzarr_embedded::next::Kernel::new(&registry, &log)
+        let kernel = ::angzarr_embedded::Kernel::new(&registry, &log)
             .on_retryable(capped())
             .wait_with(&waits);
         ready(kernel.handle_any(
@@ -5734,12 +5720,12 @@ mod router {
         // A policy step's ABORTED re-run at its cap records the handler's
         // own key as last answered: processing_failed, its retries,
         // transient (decision 14.48).
-        let reason = crate::next::toys::wire("SEAT_MOVED", &[]);
-        crate::next::toys::assert_letter(
-            &crate::next::toys::one_letter(log.letters()),
-            ::angzarr_embedded::next::v1::ComponentKind::Aggregate,
+        let reason = crate::toys::wire("SEAT_MOVED", &[]);
+        crate::toys::assert_letter(
+            &crate::toys::one_letter(log.letters()),
+            ::angzarr_embedded::v1::ComponentKind::Aggregate,
             &reason,
-            crate::next::toys::processing_failed(&reason, 3, true),
+            crate::toys::processing_failed(&reason, 3, true),
         );
     }
 
@@ -5750,7 +5736,7 @@ mod router {
     /// caller, not dead-lettered.
     #[test]
     fn a_fatal_bug_is_never_retried_and_a_retryable_one_is() {
-        use ::angzarr_embedded::next::angzarr_router::error::GrpcCode;
+        use ::angzarr_embedded::angzarr_router::error::GrpcCode;
         use std::sync::atomic::Ordering::SeqCst;
         for (grpc, attempts, letters) in [
             (GrpcCode::Internal, 1, 1),
@@ -5763,7 +5749,7 @@ mod router {
             let store = Mem::new();
             let log = MemoryDeadLetters::new();
             let waits = Waits::drawing(0.0);
-            let kernel = ::angzarr_embedded::next::Kernel::new(&registry, &log)
+            let kernel = ::angzarr_embedded::Kernel::new(&registry, &log)
                 .on_retryable(capped())
                 .wait_with(&waits);
             let failed = ready(kernel.handle_any(
@@ -5784,7 +5770,7 @@ mod router {
     /// [`Meter::seal`], their dependency [`PROBE`].
     mod marked_up {
         use super::*;
-        use ::angzarr_embedded::next::angzarr_router::error::GrpcCode;
+        use ::angzarr_embedded::angzarr_router::error::GrpcCode;
 
         fn meter_cover() -> Cover {
             Cover {
@@ -5798,7 +5784,7 @@ mod router {
         /// chain.
         fn coded<R: fmt::Debug>(
             failure: &Failure<R>,
-        ) -> &::angzarr_embedded::next::angzarr_router::error::CodedError {
+        ) -> &::angzarr_embedded::angzarr_router::error::CodedError {
             match failure {
                 Failure::Kernel(KernelError::Router(error))
                 | Failure::Downstream {
@@ -5825,7 +5811,7 @@ mod router {
             n: u8,
             payload: Any,
         ) -> Result<Handled, Failure<Rejected>> {
-            let kernel = ::angzarr_embedded::next::Kernel::new(registry, log)
+            let kernel = ::angzarr_embedded::Kernel::new(registry, log)
                 .on_retryable(capped())
                 .wait_with(waits);
             ready(kernel.handle_any(
@@ -5981,7 +5967,7 @@ mod router {
                 let store = Mem::new();
                 let log = MemoryDeadLetters::new();
                 let waits = Waits::drawing(0.0);
-                let kernel = ::angzarr_embedded::next::Kernel::new(&registry, &log)
+                let kernel = ::angzarr_embedded::Kernel::new(&registry, &log)
                     .on_retryable(capped())
                     .wait_with(&waits);
                 ready(kernel.handle_any(
@@ -6076,11 +6062,11 @@ mod router {
         let store = Mem::new();
         let log = MemoryDeadLetters::new();
         let waits = Waits::drawing(0.0);
-        let kernel = ::angzarr_embedded::next::Kernel::new(&registry, &log)
+        let kernel = ::angzarr_embedded::Kernel::new(&registry, &log)
             .on_retryable(capped())
             .wait_with(&waits);
         let mut stale = send("remote", 3, any(Note {}), None);
-        stale.handling = Some(::angzarr_embedded::next::v1::Handling {
+        stale.handling = Some(::angzarr_embedded::v1::Handling {
             expected_sequence: Some(5),
             conflict_resolution: ConflictResolution::Strict as i32,
         });
@@ -6104,10 +6090,10 @@ mod router {
 
     /// A remote handler that fails every command with `error`.
     struct Faulty {
-        error: ::angzarr_embedded::next::angzarr_router::error::CodedError,
+        error: ::angzarr_embedded::angzarr_router::error::CodedError,
     }
 
-    impl ::angzarr_embedded::next::angzarr_router::router::CommandHandler for Faulty {
+    impl ::angzarr_embedded::angzarr_router::router::CommandHandler for Faulty {
         fn name(&self) -> &str {
             "remote"
         }
@@ -6119,10 +6105,8 @@ mod router {
         async fn dispatch(
             &self,
             _: &pb::ContextualCommand,
-        ) -> Result<
-            pb::CommandHandlerResponse,
-            ::angzarr_embedded::next::angzarr_router::error::CodedError,
-        > {
+        ) -> Result<pb::CommandHandlerResponse, ::angzarr_embedded::angzarr_router::error::CodedError>
+        {
             Err(self.error.clone())
         }
     }
@@ -6130,28 +6114,26 @@ mod router {
     /// A registry with [`Faulty`] answering `grpc` under a code of its own,
     /// one the router does not know (`PLAYER_BROKE`), as the remote domain,
     /// and a policy sending it a `Note` on each wallet's `Held`.
-    fn faulty(grpc: ::angzarr_embedded::next::angzarr_router::error::GrpcCode) -> Registry {
+    fn faulty(grpc: ::angzarr_embedded::angzarr_router::error::GrpcCode) -> Registry {
         faulty_under("PLAYER_BROKE", grpc)
     }
 
     /// [`faulty`], its handler failing under `code` (with a `seat` arg).
     fn faulty_under(
         code: &'static str,
-        grpc: ::angzarr_embedded::next::angzarr_router::error::GrpcCode,
+        grpc: ::angzarr_embedded::angzarr_router::error::GrpcCode,
     ) -> Registry {
-        faulty_with(
-            ::angzarr_embedded::next::angzarr_router::error::CodedError {
-                code: code.to_string(),
-                extras: [("seat".to_string(), "3".to_string())].into(),
-                grpc,
-                refusal: None,
-            },
-        )
+        faulty_with(::angzarr_embedded::angzarr_router::error::CodedError {
+            code: code.to_string(),
+            extras: [("seat".to_string(), "3".to_string())].into(),
+            grpc,
+            refusal: None,
+        })
     }
 
     /// [`faulty`], its handler failing with `error`.
-    fn faulty_with(error: ::angzarr_embedded::next::angzarr_router::error::CodedError) -> Registry {
-        use ::angzarr_embedded::next::angzarr_router::router::DynCommandHandler;
+    fn faulty_with(error: ::angzarr_embedded::angzarr_router::error::CodedError) -> Registry {
+        use ::angzarr_embedded::angzarr_router::router::DynCommandHandler;
         let mut registry = registry();
         let faulty: Box<dyn DynCommandHandler> = Box::new(Faulty { error });
         registry
@@ -6186,7 +6168,7 @@ mod router {
     /// code and args, nothing dead-lettered.
     #[test]
     fn an_unknown_code_refused_as_failed_precondition_is_a_rejection() {
-        use ::angzarr_embedded::next::angzarr_router::error::GrpcCode;
+        use ::angzarr_embedded::angzarr_router::error::GrpcCode;
         refused_as_a_rejection(GrpcCode::FailedPrecondition);
     }
 
@@ -6194,7 +6176,7 @@ mod router {
     /// business refusal too (the owner's ruling, 2026-10-29).
     #[test]
     fn an_unknown_code_refused_as_invalid_argument_is_a_rejection() {
-        use ::angzarr_embedded::next::angzarr_router::error::GrpcCode;
+        use ::angzarr_embedded::angzarr_router::error::GrpcCode;
         refused_as_a_rejection(GrpcCode::InvalidArgument);
     }
 
@@ -6202,17 +6184,17 @@ mod router {
     /// refusal too (the owner's ruling, 2026-10-29).
     #[test]
     fn an_unknown_code_refused_as_not_found_is_a_rejection() {
-        use ::angzarr_embedded::next::angzarr_router::error::GrpcCode;
+        use ::angzarr_embedded::angzarr_router::error::GrpcCode;
         refused_as_a_rejection(GrpcCode::NotFound);
     }
 
     /// A remote handler refusing under a code of its own with `grpc` is a
     /// business rejection under that code and args, nothing dead-lettered.
-    fn refused_as_a_rejection(grpc: ::angzarr_embedded::next::angzarr_router::error::GrpcCode) {
+    fn refused_as_a_rejection(grpc: ::angzarr_embedded::angzarr_router::error::GrpcCode) {
         let registry = faulty(grpc);
         let store = Mem::new();
         let log = MemoryDeadLetters::new();
-        let kernel = ::angzarr_embedded::next::Kernel::new(&registry, &log);
+        let kernel = ::angzarr_embedded::Kernel::new(&registry, &log);
         let sampled = Sampled {
             now: at(9),
             command_id: Uuid::from_bytes([0x79; 16]),
@@ -6246,13 +6228,13 @@ mod router {
     /// resume does not run it again.
     #[test]
     fn an_unknown_code_failed_under_a_fatal_status_is_a_dead_lettered_bug() {
-        use ::angzarr_embedded::next::angzarr_router::error::GrpcCode;
-        use ::angzarr_embedded::next::StepError;
+        use ::angzarr_embedded::angzarr_router::error::GrpcCode;
+        use ::angzarr_embedded::StepError;
         for grpc in [GrpcCode::Internal, GrpcCode::Unknown, GrpcCode::DataLoss] {
             let registry = faulty(grpc);
             let store = Mem::new();
             let log = MemoryDeadLetters::new();
-            let kernel = ::angzarr_embedded::next::Kernel::new(&registry, &log);
+            let kernel = ::angzarr_embedded::Kernel::new(&registry, &log);
             let sampled = Sampled {
                 now: at(9),
                 command_id: Uuid::from_bytes([0x79; 16]),
@@ -6260,7 +6242,7 @@ mod router {
             let dead_lettered = |lines: &[String]| {
                 assert_eq!(lines.len(), 1, "{grpc:?}: {lines:?}");
                 assert!(
-                    lines[0].starts_with(::angzarr_embedded::next::DEAD_LETTER_PREFIX),
+                    lines[0].starts_with(::angzarr_embedded::DEAD_LETTER_PREFIX),
                     "{}",
                     lines[0]
                 );
@@ -6332,7 +6314,7 @@ mod router {
             dead_lettered(&log.lines());
 
             let log = MemoryDeadLetters::new();
-            let kernel = ::angzarr_embedded::next::Kernel::new(&registry, &log);
+            let kernel = ::angzarr_embedded::Kernel::new(&registry, &log);
             let resumed = ready(kernel.resume(&store, &sampled, &mut ()))
                 .expect("{grpc:?}: nothing left owed");
             assert!(
@@ -6348,8 +6330,8 @@ mod router {
     /// trigger, so a resume runs the step again and dead-letters it again.
     #[test]
     fn under_stay_a_handlers_bug_in_a_policys_step_holds_its_position() {
-        use ::angzarr_embedded::next::angzarr_router::error::GrpcCode;
-        use ::angzarr_embedded::next::{Kernel, OnPolicyBug, StepError};
+        use ::angzarr_embedded::angzarr_router::error::GrpcCode;
+        use ::angzarr_embedded::{Kernel, OnPolicyBug, StepError};
         let registry = faulty(GrpcCode::Internal);
         let store = Mem::new();
         let log = MemoryDeadLetters::new();
@@ -6399,15 +6381,15 @@ mod router {
     /// as a policy's step, whose position moves past the trigger.
     #[test]
     fn a_handlers_bug_is_dead_lettered_with_its_code_as_the_cause() {
-        use ::angzarr_embedded::next::angzarr_router::error::CodedError;
-        use ::angzarr_embedded::next::StepError;
+        use ::angzarr_embedded::angzarr_router::error::CodedError;
+        use ::angzarr_embedded::StepError;
         let registry = faulty_with(CodedError::bug(
             "PLAYER_BROKE",
             [("seat".to_string(), "3".to_string())],
         ));
         let store = Mem::new();
         let log = MemoryDeadLetters::new();
-        let kernel = ::angzarr_embedded::next::Kernel::new(&registry, &log);
+        let kernel = ::angzarr_embedded::Kernel::new(&registry, &log);
         let sampled = Sampled {
             now: at(9),
             command_id: Uuid::from_bytes([0x79; 16]),
@@ -6415,7 +6397,7 @@ mod router {
         let dead_lettered = |lines: &[String]| {
             assert_eq!(lines.len(), 1, "{lines:?}");
             assert!(
-                lines[0].starts_with(::angzarr_embedded::next::DEAD_LETTER_PREFIX),
+                lines[0].starts_with(::angzarr_embedded::DEAD_LETTER_PREFIX),
                 "{}",
                 lines[0]
             );
@@ -6484,7 +6466,7 @@ mod router {
         dead_lettered(&log.lines());
 
         let log = MemoryDeadLetters::new();
-        let kernel = ::angzarr_embedded::next::Kernel::new(&registry, &log);
+        let kernel = ::angzarr_embedded::Kernel::new(&registry, &log);
         let resumed = ready(kernel.resume(&store, &sampled, &mut ())).expect("nothing left owed");
         assert!(
             resumed.steps().is_empty(),
@@ -6497,7 +6479,7 @@ mod router {
     /// (ROUTER_REASON_UNHANDLED_HANDLER_ERROR): its commands answer as [`Remote`]'s.
     struct Picky;
 
-    impl ::angzarr_embedded::next::angzarr_router::router::CommandHandler for Picky {
+    impl ::angzarr_embedded::angzarr_router::router::CommandHandler for Picky {
         fn name(&self) -> &str {
             "picky"
         }
@@ -6509,11 +6491,9 @@ mod router {
         async fn dispatch(
             &self,
             req: &pb::ContextualCommand,
-        ) -> Result<
-            pb::CommandHandlerResponse,
-            ::angzarr_embedded::next::angzarr_router::error::CodedError,
-        > {
-            use ::angzarr_embedded::next::angzarr_router::error::CodedError;
+        ) -> Result<pb::CommandHandlerResponse, ::angzarr_embedded::angzarr_router::error::CodedError>
+        {
+            use ::angzarr_embedded::angzarr_router::error::CodedError;
             let fact = req
                 .command
                 .as_ref()
@@ -6535,7 +6515,7 @@ mod router {
 
     /// [`picky`], with `picky` as the source.
     fn picky_with(
-        picky: Box<dyn ::angzarr_embedded::next::angzarr_router::router::DynCommandHandler>,
+        picky: Box<dyn ::angzarr_embedded::angzarr_router::router::DynCommandHandler>,
     ) -> (Registry, Mem) {
         let mut registry = registry();
         registry
@@ -6573,7 +6553,7 @@ mod router {
 
     /// The refusal fact's step failing on [`Picky`]'s fact handler.
     fn assert_the_fact_step_failed<R: fmt::Debug>(failed: &Failure<R>) {
-        use ::angzarr_embedded::next::StepError;
+        use ::angzarr_embedded::StepError;
         assert!(
             matches!(
                 failed,
@@ -6594,7 +6574,7 @@ mod router {
     fn a_refusal_fact_its_source_fails_on_fails_the_step() {
         let (registry, store) = picky();
         let log = MemoryDeadLetters::new();
-        let kernel = ::angzarr_embedded::next::Kernel::new(&registry, &log);
+        let kernel = ::angzarr_embedded::Kernel::new(&registry, &log);
         let sampled = Sampled {
             now: at(9),
             command_id: Uuid::from_bytes([0x79; 16]),
@@ -6618,7 +6598,7 @@ mod router {
         );
 
         let log = MemoryDeadLetters::new();
-        let kernel = ::angzarr_embedded::next::Kernel::new(&registry, &log);
+        let kernel = ::angzarr_embedded::Kernel::new(&registry, &log);
         let resumed = ready(kernel.resume(&store, &sampled, &mut ())).expect("nothing left owed");
         assert!(
             resumed.steps().is_empty(),
@@ -6631,7 +6611,7 @@ mod router {
     /// under UNAVAILABLE, a retryable bug.
     struct Unsteady;
 
-    impl ::angzarr_embedded::next::angzarr_router::router::CommandHandler for Unsteady {
+    impl ::angzarr_embedded::angzarr_router::router::CommandHandler for Unsteady {
         fn name(&self) -> &str {
             "picky"
         }
@@ -6643,11 +6623,9 @@ mod router {
         async fn dispatch(
             &self,
             req: &pb::ContextualCommand,
-        ) -> Result<
-            pb::CommandHandlerResponse,
-            ::angzarr_embedded::next::angzarr_router::error::CodedError,
-        > {
-            use ::angzarr_embedded::next::angzarr_router::error::{CodedError, GrpcCode};
+        ) -> Result<pb::CommandHandlerResponse, ::angzarr_embedded::angzarr_router::error::CodedError>
+        {
+            use ::angzarr_embedded::angzarr_router::error::{CodedError, GrpcCode};
             let fact = req
                 .command
                 .as_ref()
@@ -6673,7 +6651,7 @@ mod router {
         let (registry, store) = picky_with(Box::new(Unsteady));
         let log = MemoryDeadLetters::new();
         let waits = Waits::drawing(0.0);
-        let kernel = ::angzarr_embedded::next::Kernel::new(&registry, &log)
+        let kernel = ::angzarr_embedded::Kernel::new(&registry, &log)
             .on_retryable(capped())
             .wait_with(&waits);
         let sampled = Sampled {
@@ -6696,8 +6674,8 @@ mod router {
         );
 
         let log = MemoryDeadLetters::new();
-        let kernel = ::angzarr_embedded::next::Kernel::new(&registry, &log).on_retryable(
-            ::angzarr_embedded::next::OnRetryable {
+        let kernel = ::angzarr_embedded::Kernel::new(&registry, &log).on_retryable(
+            ::angzarr_embedded::OnRetryable {
                 max_retries: 0,
                 ..capped()
             },
@@ -6714,7 +6692,7 @@ mod router {
     /// resume runs the step again.
     #[test]
     fn under_stay_a_refusal_fact_its_source_fails_on_holds_the_position() {
-        use ::angzarr_embedded::next::{Kernel, OnPolicyBug};
+        use ::angzarr_embedded::{Kernel, OnPolicyBug};
         let (registry, store) = picky();
         let log = MemoryDeadLetters::new();
         let kernel = Kernel::new(&registry, &log).on_policy_bug(OnPolicyBug::Stay);
@@ -6959,7 +6937,7 @@ fn handle_async(
     book.cover.as_mut().unwrap().root = Some(root);
     let log = MemoryDeadLetters::new();
     ready(
-        ::angzarr_embedded::next::Kernel::new(registry, &log).handle::<Wallet, _, _>(
+        ::angzarr_embedded::Kernel::new(registry, &log).handle::<Wallet, _, _>(
             store,
             book,
             &sampled,
@@ -7115,7 +7093,7 @@ mod projector {
     #[test]
     fn one_projector_projects_several_source_domains() {
         assert_eq!(
-            <Lights as ::angzarr_embedded::next::markup::AsyncProjector>::SOURCES,
+            <Lights as ::angzarr_embedded::markup::AsyncProjector>::SOURCES,
             ["wallet", "lamp"]
         );
         let trail = TrailPort::default();
@@ -7131,7 +7109,7 @@ mod projector {
             command_id: Uuid::from_bytes([2; 16]),
         };
         ready(
-            ::angzarr_embedded::next::Kernel::new(&registry, &log).handle::<Lamp, _, _>(
+            ::angzarr_embedded::Kernel::new(&registry, &log).handle::<Lamp, _, _>(
                 &store,
                 send("lamp", 2, any(SwitchOn {}), None),
                 &sampled,
@@ -7146,7 +7124,7 @@ mod projector {
     /// the books of each stream it is registered for, by domain.
     struct Books(std::sync::Arc<std::sync::Mutex<Vec<String>>>);
 
-    impl ::angzarr_embedded::next::angzarr_router::router::ProjectorHandler for Books {
+    impl ::angzarr_embedded::angzarr_router::router::ProjectorHandler for Books {
         fn name(&self) -> &str {
             "books"
         }
@@ -7155,12 +7133,12 @@ mod projector {
             &self,
             events: &EventBook,
         ) -> Result<
-            ::angzarr_embedded::next::v1::Projection,
-            ::angzarr_embedded::next::angzarr_router::error::CodedError,
+            ::angzarr_embedded::v1::Projection,
+            ::angzarr_embedded::angzarr_router::error::CodedError,
         > {
             let domain = events.cover.clone().unwrap_or_default().domain;
             self.0.lock().unwrap().push(domain);
-            Ok(::angzarr_embedded::next::v1::Projection::default())
+            Ok(::angzarr_embedded::v1::Projection::default())
         }
     }
 
@@ -7179,7 +7157,7 @@ mod projector {
             now: at(i64::from(n)),
             command_id: Uuid::from_bytes([n; 16]),
         };
-        let kernel = ::angzarr_embedded::next::Kernel::new(&registry, &log);
+        let kernel = ::angzarr_embedded::Kernel::new(&registry, &log);
         ready(kernel.handle::<Lamp, _, _>(
             &store,
             send("lamp", 2, any(SwitchOn {}), None),

@@ -660,10 +660,7 @@ pub(crate) async fn contextual_command(
         }),
         command: Some(book),
         conflict_nonce: nonce.unwrap_or_default().into(),
-        recorded_at: Some(crate::next::not_before(
-            command.last_recorded_at.as_ref(),
-            now,
-        )),
+        recorded_at: Some(crate::not_before(command.last_recorded_at.as_ref(), now)),
     })
 }
 

@@ -5,16 +5,16 @@
 //! undone (a crash, a failed store) is resumed by position, deduplicated by
 //! its derived command id. The call waits for the chain to settle.
 
-use crate::next::recording::Recording;
-use crate::next::toys::prelude::*;
-use crate::next::v1::event_meta::Causation;
-use crate::next::v1::{CommandBook, EventMeta, EventRef};
-use crate::next::{
+use crate::recording::Recording;
+use crate::toys::prelude::*;
+use crate::v1::event_meta::Causation;
+use crate::v1::{CommandBook, EventMeta, EventRef};
+use crate::{
     ids, Failure, Kernel, KernelError, MemoryDeadLetters, OnPolicyBug, Payload, Recovery, Step,
     StepError,
 };
 
-use crate::next::toys::{
+use crate::toys::{
     at, command, cover, cover_in, ledger, ledger_root, opened, payloads, registry, Account,
     AccountCmd, Bookkeeping, Edit, Ledger, LEDGER_LIMIT,
 };
@@ -23,8 +23,8 @@ fn deposit(n: u128, cents: i64) -> CommandBook {
     command(cover("account", 1), AccountCmd::Deposit(cents).to_any()).id(n)
 }
 
-fn ledger_cover() -> crate::next::v1::Cover {
-    crate::next::v1::Cover {
+fn ledger_cover() -> crate::v1::Cover {
+    crate::v1::Cover {
         domain: "ledger".to_string(),
         root: Some(ledger_root()),
         edition: None,
@@ -71,7 +71,7 @@ fn a_policys_events_carry_the_derived_command_id_as_causation_and_no_trigger() {
     );
     assert_eq!(
         meta.correlation_id,
-        Some(crate::next::toys::correlation(8)),
+        Some(crate::toys::correlation(8)),
         "the trigger's"
     );
     assert_eq!(
@@ -131,20 +131,19 @@ fn a_rejected_policy_step_keeps_the_commands_commit_and_is_dead_lettered() {
     );
     let lines = log.lines();
     assert_eq!(lines.len(), 1, "the rejected step, dead-lettered");
-    assert!(lines[0].starts_with(crate::next::DEAD_LETTER_PREFIX));
+    assert!(lines[0].starts_with(crate::DEAD_LETTER_PREFIX));
     // An untyped business refusal: the handler's own key, and
     // processing_failed, never retried, not transient (decision 14.48).
-    let letter = crate::next::toys::one_letter(log.letters());
-    let reason = crate::next::toys::wire("toy-ledger-too-large", &[]);
-    crate::next::toys::assert_letter(
+    let letter = crate::toys::one_letter(log.letters());
+    let reason = crate::toys::wire("toy-ledger-too-large", &[]);
+    crate::toys::assert_letter(
         &letter,
-        crate::next::v1::ComponentKind::Policy,
+        crate::v1::ComponentKind::Policy,
         &reason,
-        crate::next::toys::processing_failed(&reason, 0, false),
+        crate::toys::processing_failed(&reason, 0, false),
     );
     // The command as delivered, its ids assigned.
-    let Some(crate::next::v1::angzarr_dead_letter::Payload::RejectedCommand(book)) =
-        &letter.payload
+    let Some(crate::v1::angzarr_dead_letter::Payload::RejectedCommand(book)) = &letter.payload
     else {
         panic!("the refused command: {letter:?}");
     };
@@ -164,7 +163,7 @@ fn a_rejected_policy_step_keeps_the_commands_commit_and_is_dead_lettered() {
         .handle::<Account, _, _>(&store, deposit(3, LEDGER_LIMIT + 1), &at(31), &mut ())
         .ready()
         .unwrap();
-    assert!(matches!(retried, crate::next::Handled::Duplicate(_)));
+    assert!(matches!(retried, crate::Handled::Duplicate(_)));
     assert_eq!(pages(&store, &ledger_cover()), [], "nothing run again");
     assert_eq!(log.lines().len(), 1);
 }
@@ -218,11 +217,9 @@ fn a_command_to_an_edition_is_refused_and_writes_nothing() {
         .unwrap();
     assert_eq!(
         failure,
-        Failure::Kernel(KernelError::Store(
-            crate::next::StoreError::EditionNotForked {
-                stream: Box::new(stream)
-            }
-        ))
+        Failure::Kernel(KernelError::Store(crate::StoreError::EditionNotForked {
+            stream: Box::new(stream)
+        }))
     );
     assert_eq!(failure.recovery(), Recovery::Invalid);
     assert_eq!(streams(&store), [], "nothing written");
@@ -230,10 +227,8 @@ fn a_command_to_an_edition_is_refused_and_writes_nothing() {
 
 #[test]
 fn a_policys_target_is_in_its_sources_edition() {
-    let target = crate::next::target_cover::<Bookkeeping>(
-        &cover_in("account", 1, "what-if"),
-        &ledger_root(),
-    );
+    let target =
+        crate::target_cover::<Bookkeeping>(&cover_in("account", 1, "what-if"), &ledger_root());
     assert_eq!(
         target.edition.as_deref(),
         Some("what-if"),
@@ -245,15 +240,15 @@ fn a_policys_target_is_in_its_sources_edition() {
 /// `CommandRefused` unless it says otherwise.
 #[test]
 fn a_hand_written_policy_passes_a_refusal_through() {
-    use crate::next::markup::{self, v1::Refusal};
+    use crate::markup::{self, v1::Refusal};
     let refusal = Refusal {
-        event: Some(crate::next::v1::EventBook {
+        event: Some(crate::v1::EventBook {
             cover: Some(cover("account", 1)),
             ..Default::default()
         }),
         ..Default::default()
     };
-    let answer = crate::next::Policy::on_refused(&Bookkeeping, &refusal, &Default::default());
+    let answer = crate::Policy::on_refused(&Bookkeeping, &refusal, &Default::default());
     assert_eq!(answer, Ok(markup::pass_through(&refusal)));
 }
 
@@ -302,7 +297,7 @@ fn each_step_loads_what_the_steps_before_it_committed() {
         .handle::<Account, _, _>(&store, deposit(4, 5), &at(31), &mut ())
         .ready()
         .unwrap();
-    let crate::next::Handled::Applied(recorded) = handled else {
+    let crate::Handled::Applied(recorded) = handled else {
         panic!("applied");
     };
     assert_eq!(
@@ -324,9 +319,9 @@ fn each_step_loads_what_the_steps_before_it_committed() {
 #[derive(Default)]
 struct Deposits(Vec<i64>);
 
-impl crate::next::Projection<Account> for Deposits {
-    fn project(&mut self, c: &crate::next::Committed<'_, Account>) {
-        if let crate::next::toys::AccountEvent::Deposited(cents) = c.event() {
+impl crate::Projection<Account> for Deposits {
+    fn project(&mut self, c: &crate::Committed<'_, Account>) {
+        if let crate::toys::AccountEvent::Deposited(cents) = c.event() {
             self.0.push(*cents);
         }
     }
@@ -345,7 +340,7 @@ fn projections_run_after_commit_over_their_domains_streams() {
     opened(&store, &plain, 1, 0);
     let mut deposits = Deposits::default();
     let mut ledger_seen = 0;
-    let mut route = crate::next::ProjectionRoute {
+    let mut route = crate::ProjectionRoute {
         name: "deposits",
         projection: &mut deposits,
         domain: std::marker::PhantomData,
@@ -357,14 +352,14 @@ fn projections_run_after_commit_over_their_domains_streams() {
     assert!(handled.outcome().projector_failures.is_empty());
     assert_eq!(deposits.0, [25], "only the new events, only the account's");
 
-    let crate::next::Handled::Applied(recorded) = handled else {
+    let crate::Handled::Applied(recorded) = handled else {
         panic!("applied");
     };
     recorded
         .dispatch::<Ledger>(
             &ledger_cover(),
             &registry,
-            &mut [&mut |_: &crate::next::Committed<'_, Ledger>| ledger_seen += 1],
+            &mut [&mut |_: &crate::Committed<'_, Ledger>| ledger_seen += 1],
         )
         .unwrap();
     assert_eq!(ledger_seen, 1);
@@ -390,7 +385,7 @@ fn a_duplicate_runs_no_projection_and_commits_nothing() {
     let store = MemoryStore::new();
     opened(&store, &registry, 1, 0);
     let mut deposits = Deposits::default();
-    let mut route = crate::next::ProjectionRoute {
+    let mut route = crate::ProjectionRoute {
         name: "deposits",
         projection: &mut deposits,
         domain: std::marker::PhantomData,
@@ -400,7 +395,7 @@ fn a_duplicate_runs_no_projection_and_commits_nothing() {
         .handle::<Account, _, _>(&store, open, &at(30), &mut route)
         .ready()
         .unwrap();
-    assert!(matches!(handled, crate::next::Handled::Duplicate(_)));
+    assert!(matches!(handled, crate::Handled::Duplicate(_)));
     assert_eq!(handled.outcome().projector_failures, []);
     assert!(deposits.0.is_empty());
 }
@@ -430,30 +425,27 @@ fn handle_is_a_send_future_over_a_send_store() {
 }
 
 /// The account stream as stored.
-fn account_stream(
-    store: &MemoryStore,
-    registry: &crate::next::Registry,
-) -> crate::next::Stream<Account> {
+fn account_stream(store: &MemoryStore, registry: &crate::Registry) -> crate::Stream<Account> {
     let pages = pages(store, &cover("account", 1));
-    crate::next::Stream::replay(cover("account", 1), &pages, registry).unwrap()
+    crate::Stream::replay(cover("account", 1), &pages, registry).unwrap()
 }
 
 /// Account deposits → the ledger, and nothing else: a policy that targets
 /// from the event, so the ledger is owed only some of the account's events.
 struct DepositsOnly;
 
-impl crate::next::Policy for DepositsOnly {
+impl crate::Policy for DepositsOnly {
     const NAME: &'static str = "deposits-only";
     type Source = Account;
     type Target = Ledger;
 
     fn on_event(
         &self,
-        event: &crate::next::Any,
-        ctx: &crate::next::markup::PolicyContext,
-    ) -> Result<Option<crate::next::markup::Commands<Ledger>>, crate::next::markup::Report> {
-        let Ok(crate::next::toys::AccountEvent::Deposited(cents)) =
-            crate::next::toys::AccountEvent::from_any(event)
+        event: &crate::Any,
+        ctx: &crate::markup::PolicyContext,
+    ) -> Result<Option<crate::markup::Commands<Ledger>>, crate::markup::Report> {
+        let Ok(crate::toys::AccountEvent::Deposited(cents)) =
+            crate::toys::AccountEvent::from_any(event)
         else {
             return Ok(None);
         };
@@ -462,7 +454,7 @@ impl crate::next::Policy for DepositsOnly {
             cents,
         };
         Ok(Some(
-            crate::next::markup::Commands::none().send(ledger_root(), &record),
+            crate::markup::Commands::none().send(ledger_root(), &record),
         ))
     }
 }
@@ -471,30 +463,30 @@ impl crate::next::Policy for DepositsOnly {
 /// the policy answers it with its error, a bug, not a command.
 struct Unlucky;
 
-impl crate::next::Policy for Unlucky {
+impl crate::Policy for Unlucky {
     const NAME: &'static str = "unlucky";
     type Source = Account;
     type Target = Ledger;
 
     fn on_event(
         &self,
-        event: &crate::next::Any,
-        ctx: &crate::next::markup::PolicyContext,
-    ) -> Result<Option<crate::next::markup::Commands<Ledger>>, crate::next::markup::Report> {
-        let Ok(crate::next::toys::AccountEvent::Deposited(cents)) =
-            crate::next::toys::AccountEvent::from_any(event)
+        event: &crate::Any,
+        ctx: &crate::markup::PolicyContext,
+    ) -> Result<Option<crate::markup::Commands<Ledger>>, crate::markup::Report> {
+        let Ok(crate::toys::AccountEvent::Deposited(cents)) =
+            crate::toys::AccountEvent::from_any(event)
         else {
             return Ok(None);
         };
         if cents == 13 {
-            return Err(crate::next::markup::Report::new("toy-unlucky-deposit").arg("cents", cents));
+            return Err(crate::markup::Report::new("toy-unlucky-deposit").arg("cents", cents));
         }
         let record = ledger::Record {
             source_sequence: ctx.trigger().sequence,
             cents,
         };
         Ok(Some(
-            crate::next::markup::Commands::none().send(ledger_root(), &record),
+            crate::markup::Commands::none().send(ledger_root(), &record),
         ))
     }
 }
@@ -534,7 +526,7 @@ fn a_policys_error_dead_letters_its_step_and_moves_its_position_past_it() {
     );
     assert_eq!(
         failure.recovery(),
-        crate::next::Recovery::Bug,
+        crate::Recovery::Bug,
         "a defect, alertable, not a business refusal"
     );
     assert_eq!(
@@ -545,7 +537,7 @@ fn a_policys_error_dead_letters_its_step_and_moves_its_position_past_it() {
     assert_eq!(pages(&store, &ledger_cover()), [], "the step sent nothing");
     let lines = log.lines();
     assert_eq!(lines.len(), 1, "the failed step, dead-lettered: {lines:?}");
-    assert!(lines[0].starts_with(crate::next::DEAD_LETTER_PREFIX));
+    assert!(lines[0].starts_with(crate::DEAD_LETTER_PREFIX));
     assert!(
         lines[0].contains("unlucky: ROUTER_REASON_UNHANDLED_HANDLER_ERROR cause=toy-unlucky-deposit cause.cents=13"),
         "the policy, its bug's key, its error's code as the cause, and its args: {}",
@@ -554,21 +546,21 @@ fn a_policys_error_dead_letters_its_step_and_moves_its_position_past_it() {
     // A policy's error is a handler's bug, keyed as the router keys one;
     // the trigger is the payload, processing_failed, never retried, not
     // transient (decision 14.48).
-    let letter = crate::next::toys::one_letter(log.letters());
-    let reason = crate::next::toys::wire(
+    let letter = crate::toys::one_letter(log.letters());
+    let reason = crate::toys::wire(
         "ROUTER_REASON_UNHANDLED_HANDLER_ERROR",
         &[("cause", "toy-unlucky-deposit"), ("cause.cents", "13")],
     );
-    crate::next::toys::assert_letter(
+    crate::toys::assert_letter(
         &letter,
-        crate::next::v1::ComponentKind::Policy,
+        crate::v1::ComponentKind::Policy,
         &reason,
-        crate::next::toys::processing_failed(&reason, 0, false),
+        crate::toys::processing_failed(&reason, 0, false),
     );
     assert!(
         matches!(
             &letter.payload,
-            Some(crate::next::v1::angzarr_dead_letter::Payload::RejectedEvents(book))
+            Some(crate::v1::angzarr_dead_letter::Payload::RejectedEvents(book))
                 if book.cover == Some(cover("account", 1))
         ),
         "{letter:?}"
@@ -588,7 +580,7 @@ fn a_policys_error_dead_letters_its_step_and_moves_its_position_past_it() {
         .handle::<Account, _, _>(&store, deposit(4, 5), &at(31), &mut ())
         .ready()
         .expect("the next event is handled as usual");
-    let book = crate::next::v1::EventBook {
+    let book = crate::v1::EventBook {
         pages: pages(&store, &ledger_cover()),
         ..Default::default()
     };
@@ -732,7 +724,7 @@ fn a_filtered_policy_reaches_its_target_only_for_the_events_it_targets() {
             .ready()
             .unwrap();
     }
-    let book = crate::next::v1::EventBook {
+    let book = crate::v1::EventBook {
         pages: pages(&store, &ledger_cover()),
         ..Default::default()
     };
@@ -753,12 +745,12 @@ fn a_filtered_policy_reaches_its_target_only_for_the_events_it_targets() {
 
 #[test]
 fn a_policy_book_for_an_unregistered_target_is_a_dead_lettered_bug() {
-    let mut registry = crate::next::Registry::new();
+    let mut registry = crate::Registry::new();
     registry.policy(Bookkeeping);
     registry
         .register::<Account>(
-            crate::next::Upcaster::new("u", "account"),
-            crate::next::toys::handlers::<crate::next::toys::Account>(),
+            crate::Upcaster::new("u", "account"),
+            crate::toys::handlers::<crate::toys::Account>(),
         )
         .unwrap();
     let log = MemoryDeadLetters::new();
@@ -780,11 +772,9 @@ fn a_policy_book_for_an_unregistered_target_is_a_dead_lettered_bug() {
     assert_eq!(path.len(), 1);
     assert_eq!(
         error,
-        &StepError::Kernel(KernelError::Malformed(
-            crate::next::Malformed::UnknownDomain {
-                domain: "ledger".to_string()
-            }
-        ))
+        &StepError::Kernel(KernelError::Malformed(crate::Malformed::UnknownDomain {
+            domain: "ledger".to_string()
+        }))
     );
     assert_eq!(
         failure.recovery(),
@@ -793,7 +783,7 @@ fn a_policy_book_for_an_unregistered_target_is_a_dead_lettered_bug() {
     );
     let lines = log.lines();
     assert_eq!(lines.len(), 1);
-    assert!(lines[0].starts_with(crate::next::DEAD_LETTER_PREFIX));
+    assert!(lines[0].starts_with(crate::DEAD_LETTER_PREFIX));
     assert!(
         lines[0]
             .contains("bookkeeping: COORDINATOR_REASON_POLICY_COMMAND_UNKNOWN_DOMAIN command_type=toy.ledger.cmd.v1.Record domain=ledger"),
@@ -831,7 +821,7 @@ fn a_command_owes_policy_steps_for_its_own_events_only() {
             .unwrap();
     }
     let ledger = slice(store.inner(), &ledger_cover()).pages;
-    let book = crate::next::v1::EventBook {
+    let book = crate::v1::EventBook {
         pages: ledger,
         ..Default::default()
     };
@@ -871,12 +861,12 @@ fn a_chain_on_a_stream_loaded_from_a_snapshot_records_only_its_events() {
         .ready()
         .unwrap();
     let (mut one, mut two) = (Deposits::default(), Deposits::default());
-    let first = crate::next::ProjectionRoute {
+    let first = crate::ProjectionRoute {
         name: "first",
         projection: &mut one,
         domain: std::marker::PhantomData,
     };
-    let second = crate::next::ProjectionRoute {
+    let second = crate::ProjectionRoute {
         name: "second",
         projection: &mut two,
         domain: std::marker::PhantomData,
@@ -885,7 +875,7 @@ fn a_chain_on_a_stream_loaded_from_a_snapshot_records_only_its_events() {
         .handle::<Account, _, _>(&store, deposit(3, 25), &at(30), &mut (first, second))
         .ready()
         .unwrap();
-    let crate::next::Handled::Applied(recorded) = handled else {
+    let crate::Handled::Applied(recorded) = handled else {
         panic!("applied");
     };
     assert!(recorded.projector_failures().is_empty());
@@ -903,7 +893,7 @@ fn a_committed_event_names_its_stream() {
     opened(&store, &registry, 1, 7);
     let source = account_stream(&store, &registry);
     let mut covers = Vec::new();
-    let mut handler = |c: &crate::next::Committed<'_, Account>| {
+    let mut handler = |c: &crate::Committed<'_, Account>| {
         covers.push((c.cover().clone(), c.envelope().sequence()))
     };
     source.dispatch(1, &registry, &mut [&mut handler]).unwrap();
@@ -921,7 +911,7 @@ fn a_policys_orders_are_indexed_and_keep_the_triggers_correlation() {
     let source = account_stream(&store, &registry);
     let mut orders = Vec::new();
     let log = MemoryDeadLetters::new();
-    let mut handler = crate::next::policy(&TwoLedgers, &log, |order| orders.push(order));
+    let mut handler = crate::policy(&TwoLedgers, &log, |order| orders.push(order));
     source.dispatch(1, &registry, &mut [&mut handler]).unwrap();
     assert_eq!(
         orders
@@ -932,7 +922,7 @@ fn a_policys_orders_are_indexed_and_keep_the_triggers_correlation() {
     );
     let correlation = source.events()[1].correlation_id().clone();
     assert!(orders.iter().all(|o| *o.correlation_id() == correlation));
-    assert_ne!(correlation, crate::next::v1::Uuid::default());
+    assert_ne!(correlation, crate::v1::Uuid::default());
 }
 
 /// A policy's error, on the handler path, hands over no order: the step
@@ -953,14 +943,14 @@ fn a_policys_error_as_a_handler_of_its_source_is_dead_lettered() {
     let source = account_stream(&store, &registry);
     let log = MemoryDeadLetters::new();
     let mut orders = Vec::new();
-    let mut handler = crate::next::policy(&Unlucky, &log, |order| orders.push(order));
+    let mut handler = crate::policy(&Unlucky, &log, |order| orders.push(order));
     source
         .dispatch(deposited, &registry, &mut [&mut handler])
         .unwrap();
     assert!(orders.is_empty(), "no order for the event it failed on");
     let lines = log.lines();
     assert_eq!(lines.len(), 1, "{lines:?}");
-    assert!(lines[0].starts_with(crate::next::DEAD_LETTER_PREFIX));
+    assert!(lines[0].starts_with(crate::DEAD_LETTER_PREFIX));
     assert!(
         lines[0].contains(&format!(
             "unlucky: ROUTER_REASON_UNHANDLED_HANDLER_ERROR cause=toy-unlucky-deposit cause.cents=13 sequence={deposited} stream=account/{}",
@@ -969,15 +959,15 @@ fn a_policys_error_as_a_handler_of_its_source_is_dead_lettered() {
         "the policy, its bug's key, its error's code and args, and the trigger: {}",
         lines[0]
     );
-    let reason = crate::next::toys::wire(
+    let reason = crate::toys::wire(
         "ROUTER_REASON_UNHANDLED_HANDLER_ERROR",
         &[("cause", "toy-unlucky-deposit"), ("cause.cents", "13")],
     );
-    crate::next::toys::assert_letter(
-        &crate::next::toys::one_letter(log.letters()),
-        crate::next::v1::ComponentKind::Policy,
+    crate::toys::assert_letter(
+        &crate::toys::one_letter(log.letters()),
+        crate::v1::ComponentKind::Policy,
         &reason,
-        crate::next::toys::processing_failed(&reason, 0, false),
+        crate::toys::processing_failed(&reason, 0, false),
     );
     assert!(!lines[0].contains("cannot happen"), "{}", lines[0]);
 }
@@ -985,21 +975,21 @@ fn a_policys_error_as_a_handler_of_its_source_is_dead_lettered() {
 /// Two ledgers per account event: orders are indexed in target order.
 struct TwoLedgers;
 
-impl crate::next::Policy for TwoLedgers {
+impl crate::Policy for TwoLedgers {
     const NAME: &'static str = "two-ledgers";
     type Source = Account;
     type Target = Ledger;
 
     fn on_event(
         &self,
-        _: &crate::next::Any,
-        ctx: &crate::next::markup::PolicyContext,
-    ) -> Result<Option<crate::next::markup::Commands<Ledger>>, crate::next::markup::Report> {
+        _: &crate::Any,
+        ctx: &crate::markup::PolicyContext,
+    ) -> Result<Option<crate::markup::Commands<Ledger>>, crate::markup::Report> {
         let record = ledger::Record {
             source_sequence: ctx.trigger().sequence,
             cents: 0,
         };
-        let commands = crate::next::markup::Commands::none()
+        let commands = crate::markup::Commands::none()
             .send(two_ledgers_root(0), &record)
             .send(two_ledgers_root(1), &record);
         Ok(Some(commands))
@@ -1007,7 +997,7 @@ impl crate::next::Policy for TwoLedgers {
 }
 
 /// The root of the `n`th of [`TwoLedgers`]' ledgers.
-fn two_ledgers_root(n: u8) -> crate::next::v1::Uuid {
+fn two_ledgers_root(n: u8) -> crate::v1::Uuid {
     ids::compute_root("ledger", &n.to_string()).unwrap()
 }
 
@@ -1041,8 +1031,8 @@ fn a_triggers_commands_are_indexed_in_target_order() {
 }
 
 /// The `n`th of [`TwoLedgers`]' ledgers.
-fn two_ledgers(n: u8) -> crate::next::v1::Cover {
-    crate::next::v1::Cover {
+fn two_ledgers(n: u8) -> crate::v1::Cover {
+    crate::v1::Cover {
         domain: "ledger".to_string(),
         root: Some(ids::compute_root("ledger", &n.to_string()).unwrap()),
         edition: None,
@@ -1080,7 +1070,7 @@ fn every_policy_on_a_source_runs_for_each_of_its_events_in_registration_order() 
         "per event: the command, TwoLedgers' targets in order, then Bookkeeping's"
     );
     for target in [two_ledgers(0), two_ledgers(1), ledger_cover()] {
-        let book = crate::next::v1::EventBook {
+        let book = crate::v1::EventBook {
             pages: slice(store.inner(), &target).pages,
             ..Default::default()
         };
@@ -1148,7 +1138,7 @@ fn a_step_the_store_failed_is_resumed_by_position() {
     let mut registry = registry();
     registry.policy(Bookkeeping);
     let log = MemoryDeadLetters::new();
-    let kernel = Kernel::new(&registry, &log).on_retryable(crate::next::toys::no_retries());
+    let kernel = Kernel::new(&registry, &log).on_retryable(crate::toys::no_retries());
     let store = Recording::new();
     opened(&store, &registry, 1, 0);
     let account = cover("account", 1);
@@ -1168,9 +1158,7 @@ fn a_step_the_store_failed_is_resumed_by_position() {
         matches!(
             &failure,
             Failure::Downstream {
-                error: StepError::Kernel(KernelError::Store(crate::next::StoreError::Unavailable(
-                    _
-                ))),
+                error: StepError::Kernel(KernelError::Store(crate::StoreError::Unavailable(_))),
                 ..
             }
         ),
@@ -1219,19 +1207,19 @@ fn a_step_the_store_failed_is_resumed_by_position() {
 /// whose target decides no event.
 struct SweepNine;
 
-impl crate::next::Policy for SweepNine {
+impl crate::Policy for SweepNine {
     const NAME: &'static str = "sweep-nine";
     type Source = Account;
     type Target = Account;
 
     fn on_event(
         &self,
-        _: &crate::next::Any,
-        _: &crate::next::markup::PolicyContext,
-    ) -> Result<Option<crate::next::markup::Commands<Account>>, crate::next::markup::Report> {
+        _: &crate::Any,
+        _: &crate::markup::PolicyContext,
+    ) -> Result<Option<crate::markup::Commands<Account>>, crate::markup::Report> {
         let root = cover("account", 9).root.unwrap();
         Ok(Some(
-            crate::next::markup::Commands::none().send(root, &AccountCmd::Sweep),
+            crate::markup::Commands::none().send(root, &AccountCmd::Sweep),
         ))
     }
 }
@@ -1260,12 +1248,12 @@ fn a_policy_step_that_decides_no_event_still_moves_its_position() {
     assert_eq!(
         store.writes(),
         [
-            crate::next::recording::WriteRecord {
+            crate::recording::WriteRecord {
                 wrote: Some((account.clone(), 1)),
                 positions: vec![],
                 landed: true,
             },
-            crate::next::recording::WriteRecord {
+            crate::recording::WriteRecord {
                 wrote: None,
                 positions: vec![("sweep-nine".to_string(), account.clone(), 1)],
                 landed: true,
@@ -1284,17 +1272,12 @@ fn a_policy_step_that_decides_no_event_still_moves_its_position() {
 /// The refusals a policy was handed, each with the refused command's
 /// context.
 type Answered = std::sync::Arc<
-    std::sync::Mutex<
-        Vec<(
-            crate::next::markup::v1::Refusal,
-            crate::next::markup::CommandContext,
-        )>,
-    >,
+    std::sync::Mutex<Vec<(crate::markup::v1::Refusal, crate::markup::CommandContext)>>,
 >;
 
 struct AnsweringBookkeeping(Answered);
 
-impl crate::next::Policy for AnsweringBookkeeping {
+impl crate::Policy for AnsweringBookkeeping {
     const NAME: &'static str = "answering-bookkeeping";
     type Source = Account;
     type Target = Ledger;
@@ -1302,19 +1285,19 @@ impl crate::next::Policy for AnsweringBookkeeping {
 
     fn on_event(
         &self,
-        event: &crate::next::Any,
-        ctx: &crate::next::markup::PolicyContext,
-    ) -> Result<Option<crate::next::markup::Commands<Ledger>>, crate::next::markup::Report> {
-        crate::next::Policy::on_event(&Bookkeeping, event, ctx)
+        event: &crate::Any,
+        ctx: &crate::markup::PolicyContext,
+    ) -> Result<Option<crate::markup::Commands<Ledger>>, crate::markup::Report> {
+        crate::Policy::on_event(&Bookkeeping, event, ctx)
     }
 
     fn on_refused(
         &self,
-        refusal: &crate::next::markup::v1::Refusal,
-        ctx: &crate::next::markup::CommandContext,
-    ) -> Result<crate::next::Any, crate::next::markup::Report> {
+        refusal: &crate::markup::v1::Refusal,
+        ctx: &crate::markup::CommandContext,
+    ) -> Result<crate::Any, crate::markup::Report> {
         self.0.lock().unwrap().push((refusal.clone(), ctx.clone()));
-        Ok(crate::next::markup::pass_through(refusal))
+        Ok(crate::markup::pass_through(refusal))
     }
 }
 
@@ -1322,7 +1305,7 @@ impl crate::next::Policy for AnsweringBookkeeping {
 /// more than its limit cannot happen, so its answer is its error, a bug.
 struct UnansweringBookkeeping;
 
-impl crate::next::Policy for UnansweringBookkeeping {
+impl crate::Policy for UnansweringBookkeeping {
     const NAME: &'static str = "unanswering-bookkeeping";
     type Source = Account;
     type Target = Ledger;
@@ -1330,23 +1313,23 @@ impl crate::next::Policy for UnansweringBookkeeping {
 
     fn on_event(
         &self,
-        event: &crate::next::Any,
-        ctx: &crate::next::markup::PolicyContext,
-    ) -> Result<Option<crate::next::markup::Commands<Ledger>>, crate::next::markup::Report> {
-        crate::next::Policy::on_event(&Bookkeeping, event, ctx)
+        event: &crate::Any,
+        ctx: &crate::markup::PolicyContext,
+    ) -> Result<Option<crate::markup::Commands<Ledger>>, crate::markup::Report> {
+        crate::Policy::on_event(&Bookkeeping, event, ctx)
     }
 
     fn on_refused(
         &self,
-        refusal: &crate::next::markup::v1::Refusal,
-        _ctx: &crate::next::markup::CommandContext,
-    ) -> Result<crate::next::Any, crate::next::markup::Report> {
+        refusal: &crate::markup::v1::Refusal,
+        _ctx: &crate::markup::CommandContext,
+    ) -> Result<crate::Any, crate::markup::Report> {
         let trigger = refusal
             .event
             .as_ref()
             .and_then(|book| book.pages.first())
             .map_or(0, |page| page.sequence);
-        Err(crate::next::markup::Report::new("toy-unanswerable-refusal").arg("trigger", trigger))
+        Err(crate::markup::Report::new("toy-unanswerable-refusal").arg("trigger", trigger))
     }
 }
 
@@ -1391,7 +1374,7 @@ fn a_policys_refusal_answer_reads_the_refused_commands_context() {
     );
     assert_eq!(
         ctx.conflict_resolution,
-        crate::next::v1::ConflictResolution::Strict
+        crate::v1::ConflictResolution::Strict
     );
     assert!(ctx.conflict.is_none(), "STRICT has no conflict");
     assert_eq!(
@@ -1457,18 +1440,18 @@ fn a_policys_refusal_answer_error_dead_letters_as_policy_failed() {
         "{}",
         lines[0]
     );
-    let reason = crate::next::toys::wire(
+    let reason = crate::toys::wire(
         "ROUTER_REASON_UNHANDLED_HANDLER_ERROR",
         &[
             ("cause", "toy-unanswerable-refusal"),
             ("cause.trigger", &before.to_string()),
         ],
     );
-    crate::next::toys::assert_letter(
-        &crate::next::toys::one_letter(log.letters()),
-        crate::next::v1::ComponentKind::Policy,
+    crate::toys::assert_letter(
+        &crate::toys::one_letter(log.letters()),
+        crate::v1::ComponentKind::Policy,
         &reason,
-        crate::next::toys::processing_failed(&reason, 0, false),
+        crate::toys::processing_failed(&reason, 0, false),
     );
     assert!(!lines[0].contains("cannot happen"), "{}", lines[0]);
     assert_eq!(
@@ -1530,7 +1513,7 @@ fn a_retry_after_a_crash_settles_what_its_stream_still_owes() {
     let mut registry = registry();
     registry.policy(Bookkeeping);
     let log = MemoryDeadLetters::new();
-    let kernel = Kernel::new(&registry, &log).on_retryable(crate::next::toys::no_retries());
+    let kernel = Kernel::new(&registry, &log).on_retryable(crate::toys::no_retries());
     let store = Recording::new();
     opened(&store, &plain, 1, 0);
     store.fail_write(1);
@@ -1542,7 +1525,7 @@ fn a_retry_after_a_crash_settles_what_its_stream_still_owes() {
         .handle::<Account, _, _>(&store, deposit(3, 25), &at(31), &mut ())
         .ready()
         .unwrap();
-    assert!(matches!(retried, crate::next::Handled::Duplicate(_)));
+    assert!(matches!(retried, crate::Handled::Duplicate(_)));
     assert_eq!(
         pages(store.inner(), &ledger_cover()).len(),
         1,
@@ -1594,7 +1577,7 @@ fn a_resumed_step_that_already_landed_is_a_duplicate() {
     opened(&store, &plain, 1, 0);
     kernel.resume(&store, &at(30), &mut ()).ready().unwrap();
     let account = cover("account", 1);
-    let key = crate::next::PositionKey {
+    let key = crate::PositionKey {
         handler: "bookkeeping",
         stream: sref(&account),
     };
@@ -1611,7 +1594,7 @@ fn a_resumed_step_that_already_landed_is_a_duplicate() {
 fn a_store_that_cannot_write_fails_the_command_with_nothing_written() {
     let registry = registry();
     let log = MemoryDeadLetters::new();
-    let kernel = Kernel::new(&registry, &log).on_retryable(crate::next::toys::no_retries());
+    let kernel = Kernel::new(&registry, &log).on_retryable(crate::toys::no_retries());
     let store = Recording::new();
     store.fail_write(0);
     let failure = kernel
@@ -1626,7 +1609,7 @@ fn a_store_that_cannot_write_fails_the_command_with_nothing_written() {
         .unwrap();
     assert!(matches!(
         failure,
-        Failure::Kernel(KernelError::Store(crate::next::StoreError::Unavailable(_)))
+        Failure::Kernel(KernelError::Store(crate::StoreError::Unavailable(_)))
     ));
     assert_eq!(failure.recovery(), Recovery::Retry);
     assert_eq!(streams(store.inner()), []);
@@ -1636,8 +1619,8 @@ fn a_store_that_cannot_write_fails_the_command_with_nothing_written() {
 /// through it finds the chain's account stream of another type.
 struct Impostor;
 
-impl crate::next::Domain for Impostor {
-    type State = crate::next::toys::LedgerState;
+impl crate::Domain for Impostor {
+    type State = crate::toys::LedgerState;
     type Command = std::convert::Infallible;
     type Fact = std::convert::Infallible;
     type Event = std::convert::Infallible;
@@ -1646,15 +1629,15 @@ impl crate::next::Domain for Impostor {
 
     const NAME: &'static str = "account";
 
-    fn apply(_: &mut crate::next::toys::LedgerState, event: &std::convert::Infallible) {
+    fn apply(_: &mut crate::toys::LedgerState, event: &std::convert::Infallible) {
         match *event {}
     }
 }
 
 struct Unseen;
 
-impl crate::next::Projection<Impostor> for Unseen {
-    fn project(&mut self, _: &crate::next::Committed<'_, Impostor>) {}
+impl crate::Projection<Impostor> for Unseen {
+    fn project(&mut self, _: &crate::Committed<'_, Impostor>) {}
 }
 
 #[test]
@@ -1666,12 +1649,12 @@ fn a_projection_that_fails_is_reported_and_the_commit_stands() {
     opened(&store, &registry, 1, 0);
     let mut deposits = Deposits::default();
     let mut routes = (
-        crate::next::ProjectionRoute {
+        crate::ProjectionRoute {
             name: "impostor",
             projection: &mut Unseen,
             domain: std::marker::PhantomData::<fn() -> Impostor>,
         },
-        crate::next::ProjectionRoute {
+        crate::ProjectionRoute {
             name: "deposits",
             projection: &mut deposits,
             domain: std::marker::PhantomData,
@@ -1681,7 +1664,7 @@ fn a_projection_that_fails_is_reported_and_the_commit_stands() {
         .handle::<Account, _, _>(&store, deposit(3, 25), &at(30), &mut routes)
         .ready()
         .unwrap();
-    let failure = crate::next::ProjectorFailure {
+    let failure = crate::ProjectorFailure {
         projector: "impostor",
         error: KernelError::WrongDomain {
             stream: cover("account", 1),
@@ -1689,7 +1672,7 @@ fn a_projection_that_fails_is_reported_and_the_commit_stands() {
         },
     };
     assert_eq!(handled.outcome().projector_failures.len(), 1);
-    let crate::next::Handled::Applied(recorded) = handled else {
+    let crate::Handled::Applied(recorded) = handled else {
         panic!("applied");
     };
     assert_eq!(recorded.projector_failures(), [failure]);
@@ -1705,7 +1688,7 @@ fn a_projection_that_fails_is_reported_and_the_commit_stands() {
 #[derive(Default)]
 struct Waits(std::sync::Mutex<Vec<std::time::Duration>>);
 
-impl crate::next::Wait for Waits {
+impl crate::Wait for Waits {
     fn wait(
         &self,
         backoff: std::time::Duration,
@@ -1721,7 +1704,7 @@ impl crate::next::Wait for Waits {
 
 /// A policy's step whose write fails once with `error` is reloaded and
 /// run again after one backoff: it lands, and nothing is dead-lettered.
-fn a_policy_step_failing_once_lands_on_its_retry(error: crate::next::StoreError) {
+fn a_policy_step_failing_once_lands_on_its_retry(error: crate::StoreError) {
     let mut registry = registry();
     registry.policy(Bookkeeping);
     let log = MemoryDeadLetters::new();
@@ -1747,7 +1730,7 @@ fn a_policy_step_failing_once_lands_on_its_retry(error: crate::next::StoreError)
 /// the kernel for its caller: reloaded and run again.
 #[test]
 fn a_policy_steps_lost_race_is_reloaded_and_run_again() {
-    a_policy_step_failing_once_lands_on_its_retry(crate::next::StoreError::Conflict {
+    a_policy_step_failing_once_lands_on_its_retry(crate::StoreError::Conflict {
         stream: Box::new(ledger_cover()),
         expected: 2,
         actual: 3,
@@ -1757,7 +1740,7 @@ fn a_policy_steps_lost_race_is_reloaded_and_run_again() {
 /// A policy's step whose store could not say is a retryable bug: run again.
 #[test]
 fn a_policy_steps_unavailable_store_is_run_again() {
-    a_policy_step_failing_once_lands_on_its_retry(crate::next::StoreError::Unavailable(
+    a_policy_step_failing_once_lands_on_its_retry(crate::StoreError::Unavailable(
         angzarr_ports::Cause::new("angzarr-store-sqlite-unavailable", []),
     ));
 }
@@ -1766,7 +1749,7 @@ fn a_policy_steps_unavailable_store_is_run_again() {
 /// over it, and not repeating.
 #[test]
 fn the_kernels_own_draws_are_uniform_in_the_unit_interval() {
-    use crate::next::Wait;
+    use crate::Wait;
     let draws: Vec<f64> = (0..2000).map(|_| super::ThreadWait.draw()).collect();
     assert!(draws.iter().all(|d| (0.0..1.0).contains(d)), "{draws:?}");
     let mean = draws.iter().sum::<f64>() / draws.len() as f64;
@@ -1779,7 +1762,7 @@ fn the_kernels_own_draws_are_uniform_in_the_unit_interval() {
 /// task that waits.
 #[test]
 fn the_kernels_own_wait_waits_out_its_backoff() {
-    use crate::next::Wait;
+    use crate::Wait;
     use std::task::{Context, Poll, Wake, Waker};
     struct Unpark(std::thread::Thread);
     impl Wake for Unpark {
@@ -1840,7 +1823,7 @@ fn an_outside_callers_lost_race_without_an_expected_sequence_is_run_again() {
     opened(&store, &registry, 1, 0);
     store.fail_write_with(
         0,
-        crate::next::StoreError::Conflict {
+        crate::StoreError::Conflict {
             stream: Box::new(cover("account", 1)),
             expected: 2,
             actual: 3,
@@ -1850,13 +1833,13 @@ fn an_outside_callers_lost_race_without_an_expected_sequence_is_run_again() {
         .handle::<Account, _, _>(&store, deposit(3, 25), &at(30), &mut ())
         .ready();
     assert!(
-        matches!(handled, Ok(crate::next::Handled::Applied(_))),
+        matches!(handled, Ok(crate::Handled::Applied(_))),
         "{:?}",
         handled.err()
     );
     assert_eq!(
         *waits.0.lock().unwrap(),
-        [crate::next::OnRetryable::default().initial_backoff],
+        [crate::OnRetryable::default().initial_backoff],
         "run again once, after the first backoff"
     );
     assert_eq!(pages(&store, &cover("account", 1)).len(), 3);
@@ -1878,7 +1861,7 @@ fn an_outside_callers_lost_race_with_an_expected_sequence_is_stale_at_once() {
     opened(&store, &registry, 1, 0);
     store.fail_write_with(
         0,
-        crate::next::StoreError::Conflict {
+        crate::StoreError::Conflict {
             stream: Box::new(cover("account", 1)),
             expected: 2,
             actual: 3,
@@ -1887,7 +1870,7 @@ fn an_outside_callers_lost_race_with_an_expected_sequence_is_stale_at_once() {
     let failure = kernel
         .handle::<Account, _, _>(
             &store,
-            deposit(3, 25).expecting(2, crate::next::v1::ConflictResolution::Strict),
+            deposit(3, 25).expecting(2, crate::v1::ConflictResolution::Strict),
             &at(30),
             &mut (),
         )
@@ -1910,10 +1893,10 @@ fn an_outside_callers_lost_race_with_an_expected_sequence_is_stale_at_once() {
 /// checks nothing: it answers whatever `answer` builds for the triggering
 /// event, as a remote policy's business code might (decision 14.42).
 struct Unchecked {
-    answer: fn(&crate::next::v1::EventBook) -> Vec<CommandBook>,
+    answer: fn(&crate::v1::EventBook) -> Vec<CommandBook>,
 }
 
-impl crate::next::angzarr_router::router::PolicyComponent for Unchecked {
+impl crate::angzarr_router::router::PolicyComponent for Unchecked {
     fn name(&self) -> &str {
         "unchecked"
     }
@@ -1922,13 +1905,11 @@ impl crate::next::angzarr_router::router::PolicyComponent for Unchecked {
     }
     async fn dispatch(
         &self,
-        source: &crate::next::v1::EventBook,
-    ) -> Result<
-        crate::next::angzarr_router::pb::PolicyResponse,
-        crate::next::angzarr_router::error::CodedError,
-    > {
-        Ok(crate::next::angzarr_router::pb::PolicyResponse {
-            reactions: vec![crate::next::angzarr_router::pb::PolicyReaction {
+        source: &crate::v1::EventBook,
+    ) -> Result<crate::angzarr_router::pb::PolicyResponse, crate::angzarr_router::error::CodedError>
+    {
+        Ok(crate::angzarr_router::pb::PolicyResponse {
+            reactions: vec![crate::angzarr_router::pb::PolicyReaction {
                 trigger_sequence: source.pages[0].sequence,
                 commands: (self.answer)(source),
             }],
@@ -1936,19 +1917,19 @@ impl crate::next::angzarr_router::router::PolicyComponent for Unchecked {
     }
     async fn dispatch_refusal(
         &self,
-        _: &crate::next::markup::v1::Refusal,
-        _: &crate::next::markup::CommandContext,
-    ) -> Result<Option<crate::next::Any>, crate::next::angzarr_router::error::CodedError> {
+        _: &crate::markup::v1::Refusal,
+        _: &crate::markup::CommandContext,
+    ) -> Result<Option<crate::Any>, crate::angzarr_router::error::CodedError> {
         Ok(None)
     }
 }
 
 /// A ledger `Record` for `cover`'s stream, as a policy's business code
 /// returns it: no ids, no handling.
-fn record_for(cover: crate::next::v1::Cover) -> CommandBook {
+fn record_for(cover: crate::v1::Cover) -> CommandBook {
     command(
         cover,
-        crate::next::pack(&ledger::Record {
+        crate::pack(&ledger::Record {
             source_sequence: 0,
             cents: 1,
         }),
@@ -1967,7 +1948,7 @@ fn a_policy_command_outside_its_destination_is_refused_by_the_kernel() {
             answer: |_| {
                 vec![
                     record_for(ledger_cover()),
-                    record_for(crate::next::v1::Cover {
+                    record_for(crate::v1::Cover {
                         domain: "shelf".to_string(),
                         ..ledger_cover()
                     }),
@@ -2009,21 +1990,21 @@ fn a_policy_command_outside_its_destination_is_refused_by_the_kernel() {
         "nothing delivered, not even the command inside the destination"
     );
     assert_eq!(log.lines().len(), 1, "{:?}", log.lines());
-    let reason = crate::next::toys::wire(
+    let reason = crate::toys::wire(
         "COORDINATOR_REASON_POLICY_COMMAND_OUTSIDE_DESTINATION",
         &[("actual_domain", "shelf"), ("expected_domain", "ledger")],
     );
-    let letter = crate::next::toys::one_letter(log.letters());
-    crate::next::toys::assert_letter(
+    let letter = crate::toys::one_letter(log.letters());
+    crate::toys::assert_letter(
         &letter,
-        crate::next::v1::ComponentKind::Policy,
+        crate::v1::ComponentKind::Policy,
         &reason,
-        crate::next::toys::processing_failed(&reason, 0, false),
+        crate::toys::processing_failed(&reason, 0, false),
     );
     assert!(
         matches!(
             &letter.payload,
-            Some(crate::next::v1::angzarr_dead_letter::Payload::RejectedEvents(book))
+            Some(crate::v1::angzarr_dead_letter::Payload::RejectedEvents(book))
                 if book.cover == Some(cover("account", 1))
         ),
         "the trigger: {letter:?}"
@@ -2034,8 +2015,8 @@ fn a_policy_command_outside_its_destination_is_refused_by_the_kernel() {
 /// What the kernel refuses `answer`'s commands with, as a policy of the
 /// account's opening, nothing delivered.
 fn unchecked_refusal(
-    answer: fn(&crate::next::v1::EventBook) -> Vec<CommandBook>,
-) -> crate::next::angzarr_router::error::CodedError {
+    answer: fn(&crate::v1::EventBook) -> Vec<CommandBook>,
+) -> crate::angzarr_router::error::CodedError {
     let mut registry = registry();
     registry.policy_component(Unchecked { answer }, "ledger");
     let log = MemoryDeadLetters::new();
@@ -2060,15 +2041,15 @@ fn unchecked_refusal(
     };
     // The trigger dead-lettered under the refusal's key and args, as
     // answered: processing_failed, a fatal bug (decision 14.48).
-    let reason = crate::next::v1::Diagnostic {
+    let reason = crate::v1::Diagnostic {
         code: error.code.clone(),
         args: error.extras.clone().into_iter().collect(),
     };
-    crate::next::toys::assert_letter(
-        &crate::next::toys::one_letter(log.letters()),
-        crate::next::v1::ComponentKind::Policy,
+    crate::toys::assert_letter(
+        &crate::toys::one_letter(log.letters()),
+        crate::v1::ComponentKind::Policy,
         &reason,
-        crate::next::toys::processing_failed(&reason, 0, false),
+        crate::toys::processing_failed(&reason, 0, false),
     );
     error
 }
@@ -2079,7 +2060,7 @@ fn unchecked_refusal(
 /// type (decision 14.48): never delivered with its handling dropped.
 #[test]
 fn a_policys_command_with_handling_is_refused_by_the_kernel() {
-    use crate::next::v1::{ConflictResolution, Handling};
+    use crate::v1::{ConflictResolution, Handling};
     let sequenced = unchecked_refusal(|_| {
         let mut book = record_for(ledger_cover());
         book.handling = Some(Handling {
@@ -2111,7 +2092,7 @@ fn a_policys_command_with_handling_is_refused_by_the_kernel() {
         );
         assert_eq!(
             refused.grpc,
-            crate::next::angzarr_router::error::GrpcCode::Internal
+            crate::angzarr_router::error::GrpcCode::Internal
         );
     }
     // An empty Handling is unset, and fine.
@@ -2120,7 +2101,7 @@ fn a_policys_command_with_handling_is_refused_by_the_kernel() {
         Unchecked {
             answer: |_| {
                 let mut book = record_for(ledger_cover());
-                book.handling = Some(crate::next::v1::Handling::default());
+                book.handling = Some(crate::v1::Handling::default());
                 vec![book]
             },
         },
@@ -2146,7 +2127,7 @@ fn a_policys_command_with_handling_is_refused_by_the_kernel() {
 #[test]
 fn a_policys_commands_are_held_to_their_trigger_by_the_kernel() {
     let outside = unchecked_refusal(|_| {
-        vec![record_for(crate::next::v1::Cover {
+        vec![record_for(crate::v1::Cover {
             edition: Some("what-if".to_string()),
             ..ledger_cover()
         })]
@@ -2165,7 +2146,7 @@ fn a_policys_commands_are_held_to_their_trigger_by_the_kernel() {
     );
 
     let rootless = unchecked_refusal(|_| {
-        vec![record_for(crate::next::v1::Cover {
+        vec![record_for(crate::v1::Cover {
             root: None,
             ..ledger_cover()
         })]
@@ -2180,8 +2161,8 @@ fn a_policys_commands_are_held_to_their_trigger_by_the_kernel() {
         Some("toy.ledger.cmd.v1.Record")
     );
     let empty_root = unchecked_refusal(|_| {
-        vec![record_for(crate::next::v1::Cover {
-            root: Some(crate::next::v1::Uuid {
+        vec![record_for(crate::v1::Cover {
+            root: Some(crate::v1::Uuid {
                 value: Vec::new().into(),
             }),
             ..ledger_cover()
@@ -2191,7 +2172,7 @@ fn a_policys_commands_are_held_to_their_trigger_by_the_kernel() {
 
     let other = unchecked_refusal(|_| {
         let mut book = record_for(ledger_cover());
-        book.page.as_mut().unwrap().correlation_id = Some(crate::next::toys::correlation(99));
+        book.page.as_mut().unwrap().correlation_id = Some(crate::toys::correlation(99));
         vec![book]
     });
     assert_eq!(
@@ -2249,8 +2230,8 @@ fn a_policys_commands_in_their_triggers_edition_and_correlation_are_delivered() 
 /// delivered with the field dropped, nor a fact delivered as a command.
 #[test]
 fn a_policys_reaction_that_is_not_a_bare_command_is_refused_by_the_kernel() {
-    use crate::next::v1::{command_page::Body, Fact, FactOrigin};
-    let named = |refused: &crate::next::angzarr_router::error::CodedError, code: &str| {
+    use crate::v1::{command_page::Body, Fact, FactOrigin};
+    let named = |refused: &crate::angzarr_router::error::CodedError, code: &str| {
         assert_eq!(refused.code, code, "{refused:?}");
         assert_eq!(
             refused.extras.get("domain").map(String::as_str),
@@ -2264,16 +2245,15 @@ fn a_policys_reaction_that_is_not_a_bare_command_is_refused_by_the_kernel() {
         );
         assert_eq!(
             refused.grpc,
-            crate::next::angzarr_router::error::GrpcCode::Internal
+            crate::angzarr_router::error::GrpcCode::Internal
         );
     };
-    let field = |refused: &crate::next::angzarr_router::error::CodedError| {
-        refused.extras.get("field").cloned()
-    };
+    let field =
+        |refused: &crate::angzarr_router::error::CodedError| refused.extras.get("field").cloned();
 
     let other_id = unchecked_refusal(|_| {
         let mut book = record_for(ledger_cover());
-        book.page.as_mut().unwrap().command_id = Some(crate::next::toys::command_id(77));
+        book.page.as_mut().unwrap().command_id = Some(crate::toys::command_id(77));
         vec![book]
     });
     named(
@@ -2344,8 +2324,7 @@ fn a_policys_commands_naming_their_stamped_identity_are_delivered() {
                         let mut book = record_for(ledger_cover());
                         let page = book.page.as_mut().unwrap();
                         page.command_id = Some(
-                            crate::next::ids::policy_command_id(&trigger, "unchecked", index)
-                                .unwrap(),
+                            crate::ids::policy_command_id(&trigger, "unchecked", index).unwrap(),
                         );
                         page.causation_id = Some(trigger.clone());
                         book
@@ -2375,7 +2354,7 @@ fn a_policys_commands_naming_their_stamped_identity_are_delivered() {
             stream: source.cover.clone(),
             sequence: source.pages[0].sequence,
         };
-        let id = crate::next::ids::policy_command_id(&trigger, "unchecked", 0).unwrap();
+        let id = crate::ids::policy_command_id(&trigger, "unchecked", 0).unwrap();
         (0..2)
             .map(|_| {
                 let mut book = record_for(ledger_cover());
@@ -2393,11 +2372,11 @@ fn a_policys_commands_naming_their_stamped_identity_are_delivered() {
 /// The account's router table behind a handler recording every book it is
 /// handed.
 struct Recorded {
-    inner: Box<dyn crate::next::angzarr_router::router::DynCommandHandler>,
+    inner: Box<dyn crate::angzarr_router::router::DynCommandHandler>,
     books: std::sync::Arc<std::sync::Mutex<Vec<CommandBook>>>,
 }
 
-impl crate::next::angzarr_router::router::CommandHandler for Recorded {
+impl crate::angzarr_router::router::CommandHandler for Recorded {
     fn name(&self) -> &str {
         self.inner.name()
     }
@@ -2406,10 +2385,10 @@ impl crate::next::angzarr_router::router::CommandHandler for Recorded {
     }
     async fn dispatch(
         &self,
-        req: &crate::next::angzarr_router::pb::ContextualCommand,
+        req: &crate::angzarr_router::pb::ContextualCommand,
     ) -> Result<
-        crate::next::angzarr_router::pb::CommandHandlerResponse,
-        crate::next::angzarr_router::error::CodedError,
+        crate::angzarr_router::pb::CommandHandlerResponse,
+        crate::angzarr_router::error::CodedError,
     > {
         self.books
             .lock()
@@ -2425,15 +2404,15 @@ impl crate::next::angzarr_router::router::CommandHandler for Recorded {
 /// causation, its fact origin the refused command's id.
 #[test]
 fn no_translation_makes_the_kernel_build_the_pass_through_fact() {
-    use crate::next::markup::v1::CommandRefused;
-    use crate::next::v1::command_page::Body;
+    use crate::markup::v1::CommandRefused;
+    use crate::v1::command_page::Body;
     let books = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
-    let mut registry = crate::next::Registry::new();
-    let table = crate::next::route::table::<Account>(
-        std::sync::Arc::new(crate::next::toys::account::AccountState::default),
+    let mut registry = crate::Registry::new();
+    let table = crate::route::table::<Account>(
+        std::sync::Arc::new(crate::toys::account::AccountState::default),
         false,
     );
-    let inner = crate::next::toys::handlers::<Account>()(table);
+    let inner = crate::toys::handlers::<Account>()(table);
     registry
         .command_handler(
             "account",
@@ -2441,16 +2420,12 @@ fn no_translation_makes_the_kernel_build_the_pass_through_fact() {
                 inner: Box::new(inner),
                 books: std::sync::Arc::clone(&books),
             },
-            crate::next::toys::descriptor_of::<Account>(
-                crate::next::v1::ComponentKind::Aggregate,
-                "v2",
-                &[],
-            ),
+            crate::toys::descriptor_of::<Account>(crate::v1::ComponentKind::Aggregate, "v2", &[]),
         )
         .unwrap();
-    crate::next::toys::register::<Ledger>(
+    crate::toys::register::<Ledger>(
         &mut registry,
-        crate::next::Upcaster::new("ledger-upcaster", "ledger"),
+        crate::Upcaster::new("ledger-upcaster", "ledger"),
     )
     .unwrap();
     registry.policy_component(
@@ -2464,8 +2439,8 @@ fn no_translation_makes_the_kernel_build_the_pass_through_fact() {
                     true => {
                         let mut book = record_for(ledger_cover());
                         book.page.as_mut().unwrap().body =
-                            Some(Body::Command(crate::next::v1::Command {
-                                payload: Some(crate::next::pack(&ledger::Record {
+                            Some(Body::Command(crate::v1::Command {
+                                payload: Some(crate::pack(&ledger::Record {
                                     source_sequence: 1,
                                     cents: LEDGER_LIMIT + 1,
                                 })),
@@ -2479,7 +2454,7 @@ fn no_translation_makes_the_kernel_build_the_pass_through_fact() {
         "ledger",
     );
     let log = MemoryDeadLetters::new();
-    let kernel = Kernel::new(&registry, &log).on_retryable(crate::next::toys::no_retries());
+    let kernel = Kernel::new(&registry, &log).on_retryable(crate::toys::no_retries());
     let store = MemoryStore::new();
     let account = cover("account", 1);
     for book in [
@@ -2498,7 +2473,7 @@ fn no_translation_makes_the_kernel_build_the_pass_through_fact() {
     };
     let payload = f.payload.as_ref().unwrap();
     assert_eq!(
-        crate::next::type_name(&payload.type_url),
+        crate::type_name(&payload.type_url),
         "io.angzarr.v1.CommandRefused"
     );
     let refused = <CommandRefused as prost::Message>::decode(&payload.value[..]).unwrap();
@@ -2535,7 +2510,7 @@ fn no_translation_makes_the_kernel_build_the_pass_through_fact() {
 /// rejection), and the triggering event as the trigger.
 #[test]
 fn a_refusal_passes_through_as_command_refused() {
-    use crate::next::v1::{refusal_response, CommandRefused, Cover, Diagnostic, RefusalResponse};
+    use crate::v1::{refusal_response, CommandRefused, Cover, Diagnostic, RefusalResponse};
     use prost::Message;
     let trigger = Cover {
         domain: "table".to_string(),
@@ -2552,10 +2527,10 @@ fn a_refusal_passes_through_as_command_refused() {
         type_url: "/test.wallet.v1.Insufficient".to_string(),
         value: vec![8, 1],
     };
-    let refusal = |reason| crate::next::markup::v1::Refusal {
-        event: Some(crate::next::v1::EventBook {
+    let refusal = |reason| crate::markup::v1::Refusal {
+        event: Some(crate::v1::EventBook {
             cover: Some(trigger.clone()),
-            pages: vec![crate::next::v1::EventPage {
+            pages: vec![crate::v1::EventPage {
                 sequence: 4,
                 ..Default::default()
             }],

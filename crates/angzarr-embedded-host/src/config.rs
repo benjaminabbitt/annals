@@ -105,7 +105,7 @@
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
-use angzarr_embedded::next::{OnPolicyBug, OnRetryable};
+use angzarr_embedded::{OnPolicyBug, OnRetryable};
 use serde::{Deserialize, Serialize};
 
 use crate::error::HostError;
@@ -343,7 +343,7 @@ fn in_value_of(
 /// retryable (UNAVAILABLE, ABORTED, UNIMPLEMENTED, DEADLINE_EXCEEDED,
 /// RESOURCE_EXHAUSTED and the like), with exponential backoff and jitter,
 /// before it dead-letters it. The kernel's
-/// [`OnRetryable`](angzarr_embedded::next::OnRetryable), whose defaults
+/// [`OnRetryable`](angzarr_embedded::OnRetryable), whose defaults
 /// these are. Retrying is on with no config; `max_retries = 0` turns it
 /// off. Every key has a default, so the table may be left out.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -413,7 +413,7 @@ pub struct PolicyConfig {
     /// step is dead-lettered: `"move_past"` the trigger (the default: the
     /// dead letter is the record to replay) or `"stay"` at it, so a resume
     /// runs the step again. The kernel's
-    /// [`OnPolicyBug`](angzarr_embedded::next::OnPolicyBug).
+    /// [`OnPolicyBug`](angzarr_embedded::OnPolicyBug).
     #[serde(with = "OnBug")]
     pub on_bug: OnPolicyBug,
 }

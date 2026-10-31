@@ -1,22 +1,22 @@
 //! Decorators over hand-written components. [`aggregate`] and
 //! [`process_manager`] generate, from the impl's [`handles_cmd`],
 //! [`handles_fact`], [`on_refused`] and [`applies`] markers, the runtime
-//! glue that runs a domain on angzarr-embedded (its `angzarr_embedded::next::Domain` and
-//! `angzarr_embedded::next::State` impls, routing by type URL), a nameable
+//! glue that runs a domain on angzarr-embedded (its `angzarr_embedded::Domain` and
+//! `angzarr_embedded::State` impls, routing by type URL), a nameable
 //! `<Name>Handler` trait, and its constants. [`policy`] generates a policy's
-//! `angzarr_embedded::next::markup::Policy`, its refusal pass-through included, and
+//! `angzarr_embedded::markup::Policy`, its refusal pass-through included, and
 //! [`projector`] a projector's `AsyncProjector`. Hand-writing `Domain`
 //! stays first-class; this is a way of writing one, not a layer over it:
-//! the expansion calls only `angzarr_embedded::next::markup`'s documented,
+//! the expansion calls only `angzarr_embedded::markup`'s documented,
 //! stable public functions (`run_command`, `decode_message`,
 //! `policy_answer`, ...), so anything it writes can be written by hand
-//! (angzarr-embedded's `next/hand_written.test.rs` does).
+//! (angzarr-embedded's `src/hand_written.test.rs` does).
 //!
 //! Every component written here assumes nothing about distribution: the
 //! same aggregate, process manager, policy or projector runs in angzarr-embedded's
 //! process or as its own service, with no change to its code.
 //!
-//! angzarr-embedded's `next/decorated.test.rs` runs the expansion; the
+//! angzarr-embedded's `src/decorated.test.rs` runs the expansion; the
 //! `compile_fail` examples here pin what it refuses. angzarr-embedded does not run a
 //! policy yet: that comes with the kernel's committed-step dispatch.
 //!
@@ -157,10 +157,10 @@
 //! refuses it all, a bug from any of them fails it all (dead-lettered as
 //! the handler's bug), and every step's events are committed together, in
 //! order, in one commit. A decision that runs more than
-//! `angzarr_embedded::next::markup::STEP_LIMIT` steps is a bug (a step that always
+//! `angzarr_embedded::markup::STEP_LIMIT` steps is a bug (a step that always
 //! continues): the kernel's `TooManySteps`, nothing committed. A step must
 //! be idempotent on its own result (re-run there, it emits nothing);
-//! `angzarr_embedded::next::markup::assert_step_idempotent` is the test helper.
+//! `angzarr_embedded::markup::assert_step_idempotent` is the test helper.
 //!
 //! angzarr's client-side router runs continuations with the same
 //! semantics: events applied, step called on the updated instance, one
@@ -421,14 +421,14 @@
 //! impl Decides<Deposit> for Wallet {} // one per command
 //! impl Ingests<Payout> for Wallet {}  // one per fact
 //!
-//! impl ::angzarr_embedded::next::State for Wallet {
+//! impl ::angzarr_embedded::State for Wallet {
 //!     type Snapshot = WalletSnapshot; // or markup::NoSnapshot, with SNAPSHOTS = false
 //!     // to_snapshot: From<&Wallet>; restore: Wallet::restore;
 //!     // from_snapshot: Default, then restore
 //!     ..
 //! }
 //!
-//! impl ::angzarr_embedded::next::Domain for Wallet {
+//! impl ::angzarr_embedded::Domain for Wallet {
 //!     type State = Self;
 //!     type Command = __wallet_markup::Command;
 //!     type Fact = __wallet_markup::Fact;
@@ -515,8 +515,8 @@
 //!
 //! ```no_run
 //! # use std::convert::Infallible;
-//! # use angzarr_embedded::next::markup::{Context, DomainMessage};
-//! # use angzarr_embedded::next::WireError;
+//! # use angzarr_embedded::markup::{Context, DomainMessage};
+//! # use angzarr_embedded::WireError;
 //! # use angzarr_embedded_macros::{aggregate, applies, handles_cmd, handles_fact};
 //! # // A compile-only fixture: nothing here runs.
 //! # pub mod wire {
@@ -575,8 +575,8 @@
 //!
 //! ```compile_fail
 //! # use std::convert::Infallible;
-//! # use angzarr_embedded::next::markup::{Context, DomainMessage};
-//! # use angzarr_embedded::next::WireError;
+//! # use angzarr_embedded::markup::{Context, DomainMessage};
+//! # use angzarr_embedded::WireError;
 //! # use angzarr_embedded_macros::{aggregate, applies, handles_cmd, handles_fact};
 //! # // A compile-only fixture: nothing here runs.
 //! # pub mod wire {
@@ -639,8 +639,8 @@
 //!
 //! ```compile_fail
 //! # use std::convert::Infallible;
-//! # use angzarr_embedded::next::markup::{Context, DomainMessage};
-//! # use angzarr_embedded::next::WireError;
+//! # use angzarr_embedded::markup::{Context, DomainMessage};
+//! # use angzarr_embedded::WireError;
 //! # use angzarr_embedded_macros::{aggregate, applies, handles_cmd, handles_fact};
 //! # // A compile-only fixture: nothing here runs.
 //! # pub mod wire {
@@ -699,8 +699,8 @@
 //!
 //! ```compile_fail
 //! # use std::convert::Infallible;
-//! # use angzarr_embedded::next::markup::{Context, DomainMessage};
-//! # use angzarr_embedded::next::WireError;
+//! # use angzarr_embedded::markup::{Context, DomainMessage};
+//! # use angzarr_embedded::WireError;
 //! # use angzarr_embedded_macros::{aggregate, applies, handles_cmd, handles_fact};
 //! # // A compile-only fixture: nothing here runs.
 //! # pub mod wire {
@@ -758,8 +758,8 @@
 //!
 //! ```compile_fail
 //! # use std::convert::Infallible;
-//! # use angzarr_embedded::next::markup::{Context, DomainMessage};
-//! # use angzarr_embedded::next::WireError;
+//! # use angzarr_embedded::markup::{Context, DomainMessage};
+//! # use angzarr_embedded::WireError;
 //! # use angzarr_embedded_macros::{aggregate, applies, handles_cmd, handles_fact};
 //! # // A compile-only fixture: nothing here runs.
 //! # pub mod wire {
@@ -818,8 +818,8 @@
 //!
 //! ```compile_fail
 //! # use std::convert::Infallible;
-//! # use angzarr_embedded::next::markup::{Context, DomainMessage};
-//! # use angzarr_embedded::next::WireError;
+//! # use angzarr_embedded::markup::{Context, DomainMessage};
+//! # use angzarr_embedded::WireError;
 //! # use angzarr_embedded_macros::{aggregate, applies, handles_cmd, handles_fact};
 //! # // A compile-only fixture: nothing here runs.
 //! # pub mod wire {
@@ -879,8 +879,8 @@
 //!
 //! ```compile_fail
 //! # use std::convert::Infallible;
-//! # use angzarr_embedded::next::markup::{Context, DomainMessage};
-//! # use angzarr_embedded::next::WireError;
+//! # use angzarr_embedded::markup::{Context, DomainMessage};
+//! # use angzarr_embedded::WireError;
 //! # use angzarr_embedded_macros::{aggregate, applies, handles_cmd, handles_fact};
 //! # // A compile-only fixture: nothing here runs.
 //! # pub mod wire {
@@ -950,8 +950,8 @@
 //!
 //! ```compile_fail
 //! # use std::convert::Infallible;
-//! # use angzarr_embedded::next::markup::{Context, DomainMessage, Record};
-//! # use angzarr_embedded::next::WireError;
+//! # use angzarr_embedded::markup::{Context, DomainMessage, Record};
+//! # use angzarr_embedded::WireError;
 //! # use angzarr_embedded_macros::{aggregate, applies, handles_cmd, handles_fact};
 //! # // A compile-only fixture: nothing here runs.
 //! # pub mod wire {
@@ -1010,8 +1010,8 @@
 //!
 //! ```compile_fail
 //! # use std::convert::Infallible;
-//! # use angzarr_embedded::next::markup::{Context, DomainMessage, Record};
-//! # use angzarr_embedded::next::WireError;
+//! # use angzarr_embedded::markup::{Context, DomainMessage, Record};
+//! # use angzarr_embedded::WireError;
 //! # use angzarr_embedded_macros::{aggregate, applies, handles_cmd, handles_fact};
 //! # // A compile-only fixture: nothing here runs.
 //! # pub mod wire {
@@ -1070,8 +1070,8 @@
 //!
 //! ```compile_fail
 //! # use std::convert::Infallible;
-//! # use angzarr_embedded::next::markup::{Context, DomainMessage, Emit};
-//! # use angzarr_embedded::next::WireError;
+//! # use angzarr_embedded::markup::{Context, DomainMessage, Emit};
+//! # use angzarr_embedded::WireError;
 //! # use angzarr_embedded_macros::{aggregate, applies, handles_cmd, handles_fact};
 //! # // A compile-only fixture: nothing here runs.
 //! # pub mod wire {
@@ -1129,8 +1129,8 @@
 //!
 //! ```compile_fail
 //! # use std::convert::Infallible;
-//! # use angzarr_embedded::next::markup::{Context, DomainMessage, Record};
-//! # use angzarr_embedded::next::WireError;
+//! # use angzarr_embedded::markup::{Context, DomainMessage, Record};
+//! # use angzarr_embedded::WireError;
 //! # use angzarr_embedded_macros::{aggregate, applies, handles};
 //! # // A compile-only fixture: nothing here runs.
 //! # pub mod wire {
@@ -1183,8 +1183,8 @@
 //!
 //! ```compile_fail
 //! # use std::convert::Infallible;
-//! # use angzarr_embedded::next::markup::{Context, DomainMessage};
-//! # use angzarr_embedded::next::WireError;
+//! # use angzarr_embedded::markup::{Context, DomainMessage};
+//! # use angzarr_embedded::WireError;
 //! # use angzarr_embedded_macros::{aggregate, applies, handles_cmd, handles_fact};
 //! # // A compile-only fixture: nothing here runs.
 //! # pub mod wire {
@@ -1248,8 +1248,8 @@
 //!
 //! ```compile_fail
 //! # use std::convert::Infallible;
-//! # use angzarr_embedded::next::markup::{Context, DomainMessage};
-//! # use angzarr_embedded::next::WireError;
+//! # use angzarr_embedded::markup::{Context, DomainMessage};
+//! # use angzarr_embedded::WireError;
 //! # use angzarr_embedded_macros::{aggregate, applies, handles_cmd, handles_fact};
 //! # // A compile-only fixture: nothing here runs.
 //! # pub mod wire {
@@ -1312,8 +1312,8 @@
 //!
 //! ```compile_fail
 //! # use std::convert::Infallible;
-//! # use angzarr_embedded::next::markup::{Context, DomainMessage};
-//! # use angzarr_embedded::next::WireError;
+//! # use angzarr_embedded::markup::{Context, DomainMessage};
+//! # use angzarr_embedded::WireError;
 //! # use angzarr_embedded_macros::{aggregate, applies, handles_cmd, handles_fact};
 //! # // A compile-only fixture: nothing here runs.
 //! # pub mod wire {
@@ -1380,11 +1380,11 @@
 //!
 //! ```no_run
 //! # use std::convert::Infallible;
-//! # use angzarr_embedded::next::markup::{
+//! # use angzarr_embedded::markup::{
 //! #     CommandContext, CommandRefused, Commands, Context, DomainMessage, PolicyContext, Record,
 //! #     Refusal, Refuses,
 //! # };
-//! # use angzarr_embedded::next::WireError;
+//! # use angzarr_embedded::WireError;
 //! # use angzarr_embedded_macros::{
 //! #     aggregate, applies, handles_cmd, handles_fact, on_refused, process_manager, on_event, policy,
 //! # };
@@ -1513,11 +1513,11 @@
 //!
 //! ```compile_fail
 //! # use std::convert::Infallible;
-//! # use angzarr_embedded::next::markup::{
+//! # use angzarr_embedded::markup::{
 //! #     CommandContext, CommandRefused, Commands, Context, DomainMessage, PolicyContext, Record,
 //! #     Refusal, Refuses,
 //! # };
-//! # use angzarr_embedded::next::WireError;
+//! # use angzarr_embedded::WireError;
 //! # use angzarr_embedded_macros::{
 //! #     aggregate, applies, handles_cmd, handles_fact, on_refused, process_manager, on_event, policy,
 //! # };
@@ -1600,11 +1600,11 @@
 //!
 //! ```compile_fail
 //! # use std::convert::Infallible;
-//! # use angzarr_embedded::next::markup::{
+//! # use angzarr_embedded::markup::{
 //! #     CommandContext, CommandRefused, Commands, Context, DomainMessage, PolicyContext, Record,
 //! #     Refusal, Refuses,
 //! # };
-//! # use angzarr_embedded::next::WireError;
+//! # use angzarr_embedded::WireError;
 //! # use angzarr_embedded_macros::{
 //! #     aggregate, applies, handles_cmd, handles_fact, on_refused, process_manager, on_event, policy,
 //! # };
@@ -1687,11 +1687,11 @@
 //!
 //! ```compile_fail
 //! # use std::convert::Infallible;
-//! # use angzarr_embedded::next::markup::{
+//! # use angzarr_embedded::markup::{
 //! #     CommandContext, CommandRefused, Commands, Context, DomainMessage, PolicyContext, Record,
 //! #     Refusal, Refuses,
 //! # };
-//! # use angzarr_embedded::next::WireError;
+//! # use angzarr_embedded::WireError;
 //! # use angzarr_embedded_macros::{
 //! #     aggregate, applies, handles_cmd, handles_fact, on_refused, process_manager, on_event, policy,
 //! # };
@@ -1774,11 +1774,11 @@
 //!
 //! ```compile_fail
 //! # use std::convert::Infallible;
-//! # use angzarr_embedded::next::markup::{
+//! # use angzarr_embedded::markup::{
 //! #     CommandContext, CommandRefused, Commands, Context, DomainMessage, PolicyContext, Record,
 //! #     Refusal, Refuses,
 //! # };
-//! # use angzarr_embedded::next::WireError;
+//! # use angzarr_embedded::WireError;
 //! # use angzarr_embedded_macros::{
 //! #     aggregate, applies, handles_cmd, handles_fact, on_refused, process_manager, on_event, policy,
 //! # };
@@ -1861,11 +1861,11 @@
 //!
 //! ```compile_fail
 //! # use std::convert::Infallible;
-//! # use angzarr_embedded::next::markup::{
+//! # use angzarr_embedded::markup::{
 //! #     CommandContext, CommandRefused, Commands, Context, DomainMessage, PolicyContext, Record,
 //! #     Refusal, Refuses,
 //! # };
-//! # use angzarr_embedded::next::WireError;
+//! # use angzarr_embedded::WireError;
 //! # use angzarr_embedded_macros::{
 //! #     aggregate, applies, handles_cmd, handles_fact, on_refused, process_manager, on_event, policy,
 //! # };
@@ -1960,11 +1960,11 @@
 //!
 //! ```compile_fail
 //! # use std::convert::Infallible;
-//! # use angzarr_embedded::next::markup::{
+//! # use angzarr_embedded::markup::{
 //! #     CommandContext, CommandRefused, Commands, Context, DomainMessage, PolicyContext, Record,
 //! #     Refusal, Refuses,
 //! # };
-//! # use angzarr_embedded::next::WireError;
+//! # use angzarr_embedded::WireError;
 //! # use angzarr_embedded_macros::{
 //! #     aggregate, applies, handles_cmd, handles_fact, on_refused, process_manager, on_event, policy,
 //! # };
@@ -2061,11 +2061,11 @@
 //!
 //! ```compile_fail
 //! # use std::convert::Infallible;
-//! # use angzarr_embedded::next::markup::{
+//! # use angzarr_embedded::markup::{
 //! #     CommandContext, CommandRefused, Commands, Context, DomainMessage, PolicyContext, Record,
 //! #     Refusal, Refuses,
 //! # };
-//! # use angzarr_embedded::next::WireError;
+//! # use angzarr_embedded::WireError;
 //! # use angzarr_embedded_macros::{
 //! #     aggregate, applies, handles_cmd, handles_fact, on_refused, process_manager, on_event, policy,
 //! # };
@@ -2116,7 +2116,7 @@
 //! # #[derive(Clone, Default)]
 //! # pub struct Timer { rang: bool }
 //! # pub struct TimerLamp;
-//! use angzarr_embedded::next::markup::process_manager_root;
+//! use angzarr_embedded::markup::process_manager_root;
 //! ```
 //!
 //! A refusal handler (`#[on_refused]` on a domain) is a fact handler that
@@ -2125,11 +2125,11 @@
 //!
 //! ```compile_fail
 //! # use std::convert::Infallible;
-//! # use angzarr_embedded::next::markup::{
+//! # use angzarr_embedded::markup::{
 //! #     CommandContext, CommandRefused, Commands, Context, DomainMessage, PolicyContext, Record,
 //! #     Refusal, Refuses,
 //! # };
-//! # use angzarr_embedded::next::WireError;
+//! # use angzarr_embedded::WireError;
 //! # use angzarr_embedded_macros::{
 //! #     aggregate, applies, handles_cmd, handles_fact, on_refused, process_manager, on_event, policy,
 //! # };
@@ -2221,11 +2221,11 @@
 //!
 //! ```no_run
 //! # use std::convert::Infallible;
-//! # use angzarr_embedded::next::markup::{
+//! # use angzarr_embedded::markup::{
 //! #     CommandContext, CommandRefused, Commands, Context, DomainMessage, PolicyContext, Record,
 //! #     Refusal, Refuses,
 //! # };
-//! # use angzarr_embedded::next::WireError;
+//! # use angzarr_embedded::WireError;
 //! # use angzarr_embedded_macros::{
 //! #     aggregate, applies, handles_cmd, handles_fact, on_refused, process_manager, on_event, policy,
 //! # };
@@ -2363,11 +2363,11 @@
 //!
 //! ```compile_fail
 //! # use std::convert::Infallible;
-//! # use angzarr_embedded::next::markup::{
+//! # use angzarr_embedded::markup::{
 //! #     CommandContext, CommandRefused, Commands, Context, DomainMessage, PolicyContext, Record,
 //! #     Refusal, Refuses,
 //! # };
-//! # use angzarr_embedded::next::WireError;
+//! # use angzarr_embedded::WireError;
 //! # use angzarr_embedded_macros::{
 //! #     aggregate, applies, handles_cmd, handles_fact, on_refused, process_manager, on_event, policy,
 //! # };
@@ -2505,11 +2505,11 @@
 //!
 //! ```compile_fail
 //! # use std::convert::Infallible;
-//! # use angzarr_embedded::next::markup::{
+//! # use angzarr_embedded::markup::{
 //! #     CommandContext, CommandRefused, Commands, Context, DomainMessage, PolicyContext, Record,
 //! #     Refusal, Refuses,
 //! # };
-//! # use angzarr_embedded::next::WireError;
+//! # use angzarr_embedded::WireError;
 //! # use angzarr_embedded_macros::{
 //! #     aggregate, applies, handles_cmd, handles_fact, on_refused, process_manager, on_event, policy,
 //! # };
@@ -2647,11 +2647,11 @@
 //!
 //! ```compile_fail
 //! # use std::convert::Infallible;
-//! # use angzarr_embedded::next::markup::{
+//! # use angzarr_embedded::markup::{
 //! #     CommandContext, CommandRefused, Commands, Context, DomainMessage, PolicyContext, Record,
 //! #     Refusal, Refuses,
 //! # };
-//! # use angzarr_embedded::next::WireError;
+//! # use angzarr_embedded::WireError;
 //! # use angzarr_embedded_macros::{
 //! #     aggregate, applies, handles_cmd, handles_fact, on_refused, process_manager, on_event, policy,
 //! # };
@@ -2944,9 +2944,9 @@ pub fn projects(_attr: TokenStream, item: TokenStream) -> TokenStream {
     item
 }
 
-const MARKUP: &str = "::angzarr_embedded::next::markup";
+const MARKUP: &str = "::angzarr_embedded::markup";
 
-/// `::angzarr_embedded::next::markup`, as a path.
+/// `::angzarr_embedded::markup`, as a path.
 fn markup() -> Tokens {
     MARKUP.parse().expect("a path")
 }
@@ -3081,7 +3081,7 @@ fn flow(attr: Tokens, item: Tokens, flow: Flow) -> syn::Result<Tokens> {
                         &self,
                         refusal: &#m::v1::Refusal,
                         ctx: &#m::CommandContext,
-                    ) -> ::core::result::Result<::angzarr_embedded::next::Any, #m::Report> {
+                    ) -> ::core::result::Result<::angzarr_embedded::Any, #m::Report> {
                         #(
                             if let ::core::option::Option::Some(refusal) =
                                 #m::decode_refusal::<#commands>(refusal)?
@@ -3097,7 +3097,7 @@ fn flow(attr: Tokens, item: Tokens, flow: Flow) -> syn::Result<Tokens> {
 
                     fn on_event(
                         &self,
-                        event: &::angzarr_embedded::next::Any,
+                        event: &::angzarr_embedded::Any,
                         ctx: &#m::PolicyContext,
                     ) -> ::core::result::Result<
                         ::core::option::Option<#m::Commands<<Self as #m::Policy>::Target>>,
@@ -3140,7 +3140,7 @@ fn flow(attr: Tokens, item: Tokens, flow: Flow) -> syn::Result<Tokens> {
 
                     fn project<'a>(
                         &'a mut self,
-                        event: &'a ::angzarr_embedded::next::Any,
+                        event: &'a ::angzarr_embedded::Any,
                         ctx: &'a #m::ProjectionContext,
                     ) -> ::core::option::Option<#m::Projecting<'a>> {
                         #(
@@ -3193,7 +3193,7 @@ fn projector_sources(sources: &Expr) -> syn::Result<Vec<Tokens>> {
                 lit: syn::Lit::Str(name),
                 ..
             }) => Ok(quote!(#name)),
-            Expr::Path(domain) => Ok(quote!(<#domain as ::angzarr_embedded::next::Domain>::NAME)),
+            Expr::Path(domain) => Ok(quote!(<#domain as ::angzarr_embedded::Domain>::NAME)),
             other => Err(Error::new_spanned(other, usage(Flow::Projector))),
         })
         .collect()
@@ -3493,17 +3493,17 @@ fn payload_set(
         #[allow(non_camel_case_types)]
         #vis enum #name {
             #(#idents(#types),)*
-            #(#refused_idents(#m::CommandRefused<#refused_types>, ::angzarr_embedded::next::Any),)*
+            #(#refused_idents(#m::CommandRefused<#refused_types>, ::angzarr_embedded::Any),)*
         }
 
-        impl ::angzarr_embedded::next::Payload for #name {
-            fn to_any(&self) -> ::angzarr_embedded::next::Any {
+        impl ::angzarr_embedded::Payload for #name {
+            fn to_any(&self) -> ::angzarr_embedded::Any {
                 #packing
             }
 
             fn from_any(
-                any: &::angzarr_embedded::next::Any,
-            ) -> ::core::result::Result<Self, ::angzarr_embedded::next::PayloadError> {
+                any: &::angzarr_embedded::Any,
+            ) -> ::core::result::Result<Self, ::angzarr_embedded::PayloadError> {
                 #(
                     if let ::core::option::Option::Some(value) = #m::decode_message::<#types>(any)? {
                         return ::core::result::Result::Ok(#name::#idents(value));
@@ -3518,7 +3518,7 @@ fn payload_set(
                         );
                     }
                 )*
-                ::core::result::Result::Err(::angzarr_embedded::next::PayloadError::UnknownType {
+                ::core::result::Result::Err(::angzarr_embedded::PayloadError::UnknownType {
                     type_url: #m::refused_command_type_url(any)
                         .unwrap_or_else(|| ::core::clone::Clone::clone(&any.type_url)),
                 })
@@ -3774,7 +3774,7 @@ fn domain(attr: Tokens, item: Tokens, kind: Kind) -> syn::Result<Tokens> {
     // The snapshot form: the user's conversions, or none.
     let state = match snapshot {
         Some(snapshot) => quote! {
-            impl ::angzarr_embedded::next::State for #self_ty {
+            impl ::angzarr_embedded::State for #self_ty {
                 type Snapshot = #snapshot;
 
                 fn to_snapshot(&self) -> #snapshot {
@@ -3785,7 +3785,7 @@ fn domain(attr: Tokens, item: Tokens, kind: Kind) -> syn::Result<Tokens> {
                     snapshot: #snapshot,
                 ) -> ::core::result::Result<Self, #m::Report> {
                     let mut state = <#self_ty as ::core::default::Default>::default();
-                    ::angzarr_embedded::next::State::restore(&mut state, snapshot)?;
+                    ::angzarr_embedded::State::restore(&mut state, snapshot)?;
                     ::core::result::Result::Ok(state)
                 }
 
@@ -3796,13 +3796,13 @@ fn domain(attr: Tokens, item: Tokens, kind: Kind) -> syn::Result<Tokens> {
                     <#self_ty>::restore(self, snapshot).map_err(|error| #m::Report::of(&error))
                 }
 
-                fn descriptor() -> ::angzarr_embedded::next::v1::StateDescriptor {
+                fn descriptor() -> ::angzarr_embedded::v1::StateDescriptor {
                     #m::state_descriptor::<#snapshot>()
                 }
             }
         },
         None => quote! {
-            impl ::angzarr_embedded::next::State for #self_ty {
+            impl ::angzarr_embedded::State for #self_ty {
                 type Snapshot = #m::NoSnapshot;
 
                 const SNAPSHOTS: bool = false;
@@ -3824,7 +3824,7 @@ fn domain(attr: Tokens, item: Tokens, kind: Kind) -> syn::Result<Tokens> {
                     ::core::result::Result::Ok(())
                 }
 
-                fn descriptor() -> ::angzarr_embedded::next::v1::StateDescriptor {
+                fn descriptor() -> ::angzarr_embedded::v1::StateDescriptor {
                     #m::state_descriptor::<#m::NoSnapshot>()
                 }
             }
@@ -3867,7 +3867,7 @@ fn domain(attr: Tokens, item: Tokens, kind: Kind) -> syn::Result<Tokens> {
         #(#ingests)*
         #(#refusing)*
 
-        impl ::angzarr_embedded::next::Domain for #self_ty {
+        impl ::angzarr_embedded::Domain for #self_ty {
             type State = Self;
             type Command = #command_set;
             type Fact = #fact_set;
@@ -3890,8 +3890,8 @@ fn domain(attr: Tokens, item: Tokens, kind: Kind) -> syn::Result<Tokens> {
 
         impl #m::Routed for #self_ty {
             fn route(
-                table: ::angzarr_embedded::next::angzarr_router::domain::DomainDispatch<Self>,
-            ) -> ::angzarr_embedded::next::angzarr_router::domain::DomainDispatch<Self> {
+                table: ::angzarr_embedded::angzarr_router::domain::DomainDispatch<Self>,
+            ) -> ::angzarr_embedded::angzarr_router::domain::DomainDispatch<Self> {
                 table
                     #(#command_routes)*
                     #(#fact_routes)*

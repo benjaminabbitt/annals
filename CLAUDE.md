@@ -29,7 +29,7 @@ Nothing depends on it and it has no library to speak of.
 
 angzarr-embedded depends on `angzarr-proto` (a git dependency pinned by rev:
 angzarr's own prost types for `io.angzarr.v1`, whose build needs `protoc`),
-`prost` and `prost-types`, because its event-sourcing kernel (`angzarr_embedded::next`)
+`prost` and `prost-types`, because its event-sourcing kernel (`angzarr_embedded`)
 operates on angzarr's wire types directly rather than on parallel angzarr-embedded
 types: angzarr owns that contract, and angzarr-embedded is its in-process runtime.
 Every user of angzarr-embedded therefore builds angzarr-proto; this is accepted.
@@ -51,7 +51,7 @@ through the domain's upcaster port, snapshots, admission (deduplication,
 the refusal fact's stream, a process manager's start rule from its
 descriptor's starting types), conflict judgement, a policy's output checks,
 the pass-through refusal fact and its address, a projector's failure
-classes, classification, the coordinator's reason keys (`next::reasons`,
+classes, classification, the coordinator's reason keys (`angzarr_embedded::reasons`,
 angzarr-project's `CoordinatorReason` in `reasons.proto`), the store writes,
 positions and resume. Policies reach it as the router's
 `PolicyComponent`, so a policy in another process runs as an in-process
@@ -175,7 +175,7 @@ not put its tests in the reader's (or an LLM's) context.
 
 - Shared fixtures are `*.test.rs` files too, declared
   `#[cfg(test)] #[path = "toys.test.rs"] pub(crate) mod toys;`
-  (`angzarr_embedded::next::toys`).
+  (`angzarr_embedded::toys`).
 - A source file with several test files includes each,
   `#[cfg(test)] #[path = "edit_map.test.rs"] mod edit_map_tests;`, or keeps
   one `foo.test.rs` with a module per subject.

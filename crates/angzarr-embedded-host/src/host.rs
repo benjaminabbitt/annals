@@ -42,7 +42,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{mpsc, Arc, Mutex};
 use std::time::Duration;
 
-use angzarr_embedded::next::{Misconfigured, Registry};
+use angzarr_embedded::{Misconfigured, Registry};
 use angzarr_router::pb;
 use tokio::io::BufReader;
 use tokio::process::{Child, ChildStdin, ChildStdout, Command};
@@ -685,7 +685,7 @@ impl Supervisor {
     /// `first` child's is the one its component is registered by; a
     /// restarted child's replaces it, its registered domain's descriptor
     /// replaced whole
-    /// ([`Description::replace`](angzarr_embedded::next::Description::replace)),
+    /// ([`Description::replace`](angzarr_embedded::Description::replace)),
     /// under the lock [`Host::register`] registers under, before the child
     /// is published. Refused, the old registration kept, when the registry
     /// refuses it ([`HostError::Register`]) or it describes another

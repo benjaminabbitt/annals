@@ -8,7 +8,7 @@ publish.workspace = true
 # uuid 1.28 (through angzarr-proto) needs 1.89; prost 0.14 needs 1.85.
 rust-version = "1.89"
 
-# The kernel operates on angzarr's wire types directly (`angzarr_embedded::next`), so
+# The kernel operates on angzarr's wire types directly (`angzarr_embedded`), so
 # it depends on angzarr-proto: angzarr's own prost crate for io.angzarr.v1,
 # a git dependency pinned by rev, whose build needs `protoc`. prost and
 # prost-types are the versions angzarr-proto generates for, so its messages
@@ -33,7 +33,7 @@ angzarr-router = { git = "https://github.com/angzarr-io/angzarr-router", rev = "
 
 # The kernel's tests run on angzarr-ports' MemoryStore and, on a tokio
 # runtime, on the shared SQLite adapter (sqlite.test.rs); and a decorated
-# aggregate (`next/decorated.test.rs`) through angzarr-embedded-macros, whose expansion
+# aggregate (`src/decorated.test.rs`) through angzarr-embedded-macros, whose expansion
 # names `::angzarr-embedded`.
 [dev-dependencies]
 angzarr-embedded = { path = "." }

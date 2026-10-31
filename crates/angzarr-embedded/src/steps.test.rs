@@ -1,19 +1,19 @@
 //! Steps 3 to 5 driven one at a time, for tests that check each step's
 //! output: a coordinator over a store, and the steps' accessors.
-//! The chain ([`Kernel::handle`](crate::next::Kernel::handle)) runs the
+//! The chain ([`Kernel::handle`](crate::Kernel::handle)) runs the
 //! same functions.
 
 use angzarr_proto::v1::{ConflictResolution, EventPage, Snapshot};
 
-use crate::next::check::{Identified, Sampled};
-use crate::next::dead_letter::DeadLetterLog;
-use crate::next::domain::Domain;
-use crate::next::error::{Failure, KernelError};
-use crate::next::registry::Registry;
-use crate::next::route::Rejected;
-use crate::next::store::{Store, StorePort};
-use crate::next::stream::Stream;
-use crate::next::toys::ready;
+use crate::check::{Identified, Sampled};
+use crate::dead_letter::DeadLetterLog;
+use crate::domain::Domain;
+use crate::error::{Failure, KernelError};
+use crate::registry::Registry;
+use crate::route::Rejected;
+use crate::store::{Store, StorePort};
+use crate::stream::Stream;
+use crate::toys::ready;
 
 use super::{deduplicate, dispatch, load, Contextual, Deduplicated, Novel};
 
@@ -134,7 +134,7 @@ impl<D: Domain> Prepared<D> {
         registry: &Registry,
         dead_letters: &dyn DeadLetterLog,
     ) -> Result<Vec<angzarr_proto::v1::EventPage>, Failure<Rejected>> {
-        crate::next::toys::ready(dispatch(&self.contextual, sampled, registry, dead_letters))
+        crate::toys::ready(dispatch(&self.contextual, sampled, registry, dead_letters))
     }
 
     pub fn into_stream(self) -> Stream<D> {

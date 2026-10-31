@@ -23,22 +23,22 @@ use std::convert::Infallible;
 use std::fmt;
 use std::sync::{Arc, Mutex};
 
-use ::angzarr_embedded::next::angzarr_router::domain::DomainDispatch;
-use ::angzarr_embedded::next::angzarr_router::error::CodedError;
-use ::angzarr_embedded::next::angzarr_router::pb::{
+use ::angzarr_embedded::angzarr_router::domain::DomainDispatch;
+use ::angzarr_embedded::angzarr_router::error::CodedError;
+use ::angzarr_embedded::angzarr_router::pb::{
     CommandHandlerResponse, CommandResponse, ComponentDescriptor, ComponentKind,
     ConflictResolution, ContextualCommand, StateOptions,
 };
-use ::angzarr_embedded::next::angzarr_router::router::CommandHandler;
-use ::angzarr_embedded::next::markup::{
+use ::angzarr_embedded::angzarr_router::router::CommandHandler;
+use ::angzarr_embedded::markup::{
     self, CommandTarget, Commands, Context, Decides, DomainMessage, EventSource, Ingests,
     NoSnapshot, Policy, PolicyContext, Rejection, Routed, TypeName,
 };
-use ::angzarr_embedded::next::v1::{
+use ::angzarr_embedded::v1::{
     command_page, Command, CommandBook, CommandPage, Cover, DeliveryOutcome, EventBook, EventPage,
     Outcome, StateDescriptor, Uuid,
 };
-use ::angzarr_embedded::next::{
+use ::angzarr_embedded::{
     type_name, Any, Coordinated, CoordinatorPort, Domain, Failure, Handled, Kernel,
     MemoryDeadLetters, OnRetryable, Payload, PayloadError, Registry, Sampled, State, Timestamp,
     WireError,
@@ -528,7 +528,7 @@ impl CoordinatorPort for BankCoordinator {
 
 // ---------------------------------------------------------------- running
 
-type Mem = ::angzarr_embedded::next::angzarr_ports::memory::MemoryStore;
+type Mem = ::angzarr_embedded::angzarr_ports::memory::MemoryStore;
 
 fn root() -> Uuid {
     Uuid::from_bytes([0x3c; 16])
@@ -705,7 +705,7 @@ fn a_refusal_fact_decodes_as_its_commands_refusal() {
         refusal: None,
         trigger: None,
     };
-    let any = ::angzarr_embedded::next::pack(&refused);
+    let any = ::angzarr_embedded::pack(&refused);
     assert_eq!(any.type_url, markup::command_refused_type_url());
     let decoded = markup::decode_command_refused::<Bump>(&any)
         .unwrap()

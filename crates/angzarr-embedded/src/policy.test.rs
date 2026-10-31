@@ -1,7 +1,7 @@
 //! The kernel's checks of a policy's answer (decision 14.42).
 
-use crate::next::toys::{command, cover_in, ledger, ledger_root};
-use crate::next::v1::{CommandBook, Cover};
+use crate::toys::{command, cover_in, ledger, ledger_root};
+use crate::v1::{CommandBook, Cover};
 
 use super::check_reaction;
 
@@ -12,7 +12,7 @@ fn record(edition: Option<&str>) -> CommandBook {
             root: Some(ledger_root()),
             edition: edition.map(str::to_string),
         },
-        crate::next::pack(&ledger::Record {
+        crate::pack(&ledger::Record {
             source_sequence: 0,
             cents: 1,
         }),
@@ -64,7 +64,7 @@ fn every_command_is_held_to_the_destination_before_any_other_rule() {
 #[test]
 fn a_command_carrying_its_triggers_correlation_passes() {
     let trigger = cover_in("account", 1, "what-if");
-    let correlation = crate::next::toys::correlation(4);
+    let correlation = crate::toys::correlation(4);
     let mut carried = record(None);
     carried.page.as_mut().unwrap().correlation_id = Some(correlation.clone());
     assert!(check_reaction(
@@ -81,8 +81,8 @@ fn a_command_carrying_its_triggers_correlation_passes() {
 #[test]
 fn a_translated_fact_that_is_more_than_a_payload_is_the_policys_bug() {
     use super::translated;
-    use crate::next::v1::{command_page::Body, CommandPage, Fact, FactOrigin, Handling};
-    let payload = crate::next::pack(&ledger::Record {
+    use crate::v1::{command_page::Body, CommandPage, Fact, FactOrigin, Handling};
+    let payload = crate::pack(&ledger::Record {
         source_sequence: 0,
         cents: 1,
     });
@@ -104,10 +104,7 @@ fn a_translated_fact_that_is_more_than_a_payload_is_the_policys_bug() {
 
     let refused = |book: CommandBook| {
         let error = translated(book).err().unwrap();
-        assert_eq!(
-            error.grpc,
-            crate::next::angzarr_router::error::GrpcCode::Internal
-        );
+        assert_eq!(error.grpc, crate::angzarr_router::error::GrpcCode::Internal);
         Some(error.code)
     };
     let code = |c: &str| Some(c.to_string());
@@ -132,7 +129,7 @@ fn a_translated_fact_that_is_more_than_a_payload_is_the_policys_bug() {
         code("COORDINATOR_REASON_REFUSAL_FACT_NO_PAGE")
     );
     let command = CommandBook {
-        page: Some(page(Body::Command(crate::next::v1::Command {
+        page: Some(page(Body::Command(crate::v1::Command {
             payload: Some(payload.clone()),
         }))),
         ..CommandBook::default()
@@ -155,11 +152,11 @@ fn a_translated_fact_that_is_more_than_a_payload_is_the_policys_bug() {
         refused(book)
     };
     assert_eq!(
-        identified(|p| p.command_id = Some(crate::next::toys::command_id(1))),
+        identified(|p| p.command_id = Some(crate::toys::command_id(1))),
         code("COORDINATOR_REASON_REFUSAL_FACT_IDENTIFIED")
     );
     assert_eq!(
-        identified(|p| p.correlation_id = Some(crate::next::toys::command_id(1))),
+        identified(|p| p.correlation_id = Some(crate::toys::command_id(1))),
         code("COORDINATOR_REASON_REFUSAL_FACT_IDENTIFIED")
     );
     assert_eq!(
@@ -175,9 +172,9 @@ fn a_translated_fact_that_is_more_than_a_payload_is_the_policys_bug() {
 #[test]
 fn each_reaction_is_held_to_the_page_it_names() {
     use super::check_reactions;
-    use crate::next::angzarr_router::pb::PolicyReaction;
-    use crate::next::toys::correlation;
-    use crate::next::v1::{EventBook, EventMeta, EventPage};
+    use crate::angzarr_router::pb::PolicyReaction;
+    use crate::toys::correlation;
+    use crate::v1::{EventBook, EventMeta, EventPage};
     let page = |sequence, n| EventPage {
         sequence,
         meta: Some(EventMeta {
@@ -194,21 +191,20 @@ fn each_reaction_is_held_to_the_page_it_names() {
     let carrying = |n, cents| {
         let mut book = record(None);
         book.page.as_mut().unwrap().correlation_id = Some(correlation(n));
-        book.page.as_mut().unwrap().body = Some(crate::next::v1::command_page::Body::Command(
-            crate::next::v1::Command {
-                payload: Some(crate::next::pack(&ledger::Record {
+        book.page.as_mut().unwrap().body =
+            Some(crate::v1::command_page::Body::Command(crate::v1::Command {
+                payload: Some(crate::pack(&ledger::Record {
                     source_sequence: 0,
                     cents,
                 })),
-            },
-        ));
+            }));
         book
     };
     let reaction = |trigger_sequence, commands| PolicyReaction {
         trigger_sequence,
         commands,
     };
-    let trigger = crate::next::v1::EventRef {
+    let trigger = crate::v1::EventRef {
         stream: source.cover.clone(),
         sequence: 5,
     };
@@ -227,8 +223,7 @@ fn each_reaction_is_held_to_the_page_it_names() {
     let cents: Vec<i64> = checked
         .iter()
         .map(|book| {
-            let Some(crate::next::v1::command_page::Body::Command(c)) =
-                &book.page.as_ref().unwrap().body
+            let Some(crate::v1::command_page::Body::Command(c)) = &book.page.as_ref().unwrap().body
             else {
                 unreachable!()
             };
@@ -264,16 +259,13 @@ fn each_reaction_is_held_to_the_page_it_names() {
 /// code emits Commands only.
 #[test]
 fn a_reaction_is_a_command_and_carries_no_fact_origin() {
-    use crate::next::v1::{command_page::Body, Fact, FactOrigin};
+    use crate::v1::{command_page::Body, Fact, FactOrigin};
     let trigger = cover_in("account", 1, "what-if");
     let refused = |book: CommandBook| {
         let error = check_reaction("ledger", &trigger, None, vec![record(None), book])
             .err()
             .unwrap();
-        assert_eq!(
-            error.grpc,
-            crate::next::angzarr_router::error::GrpcCode::Internal
-        );
+        assert_eq!(error.grpc, crate::angzarr_router::error::GrpcCode::Internal);
         let extra = |key: &str| error.extras.get(key).cloned();
         assert_eq!(extra("domain").as_deref(), Some("ledger"));
         assert_eq!(
@@ -307,8 +299,8 @@ fn a_reaction_is_a_command_and_carries_no_fact_origin() {
 #[test]
 fn a_reactions_identity_is_unset_or_the_stamp() {
     use super::check_reactions;
-    use crate::next::angzarr_router::pb::PolicyReaction;
-    use crate::next::v1::{EventBook, EventPage, EventRef};
+    use crate::angzarr_router::pb::PolicyReaction;
+    use crate::v1::{EventBook, EventPage, EventRef};
     let source = EventBook {
         cover: Some(cover_in("account", 1, "what-if")),
         pages: vec![EventPage {
@@ -321,8 +313,7 @@ fn a_reactions_identity_is_unset_or_the_stamp() {
         stream: source.cover.clone(),
         sequence: 4,
     };
-    let stamp =
-        |index| crate::next::ids::policy_command_id(&trigger, "bookkeeping", index).unwrap();
+    let stamp = |index| crate::ids::policy_command_id(&trigger, "bookkeeping", index).unwrap();
     let identified = |id: Option<u32>, cause: Option<u64>| {
         let mut book = record(None);
         let page = book.page.as_mut().unwrap();
@@ -361,10 +352,7 @@ fn a_reactions_identity_is_unset_or_the_stamp() {
             error.code,
             "COORDINATOR_REASON_POLICY_COMMAND_OTHER_IDENTITY"
         );
-        assert_eq!(
-            error.grpc,
-            crate::next::angzarr_router::error::GrpcCode::Internal
-        );
+        assert_eq!(error.grpc, crate::angzarr_router::error::GrpcCode::Internal);
         assert_eq!(
             error.extras.get("domain").map(String::as_str),
             Some("ledger")

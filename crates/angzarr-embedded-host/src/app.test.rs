@@ -1,8 +1,8 @@
 use std::path::{Path, PathBuf};
 
 use angzarr_diagnostic::Report;
-use angzarr_embedded::next::v1::{command_page, Command, CommandBook, CommandPage, Cover, Uuid};
-use angzarr_embedded::next::{Any, Handled, Misconfigured, Registry, Sampled, Timestamp};
+use angzarr_embedded::v1::{command_page, Command, CommandBook, CommandPage, Cover, Uuid};
+use angzarr_embedded::{Any, Handled, Misconfigured, Registry, Sampled, Timestamp};
 
 use super::*;
 use crate::config::HostConfig;
@@ -182,7 +182,7 @@ async fn the_store_is_the_configured_sqlite_file() {
 /// config's `[policy] on_bug` says; the default when it is left out.
 #[tokio::test(flavor = "multi_thread")]
 async fn the_kernel_follows_the_configs_policy_setting() {
-    use angzarr_embedded::next::OnPolicyBug;
+    use angzarr_embedded::OnPolicyBug;
     let dir = scratch("policy");
     let path = dir.join("angzarr.toml");
     std::fs::write(&path, "[store]\nin_memory = true\n").unwrap();
@@ -204,7 +204,7 @@ async fn the_kernel_follows_the_configs_policy_setting() {
 /// out: retrying is on with no config.
 #[tokio::test(flavor = "multi_thread")]
 async fn the_kernel_follows_the_configs_retry_setting() {
-    use angzarr_embedded::next::OnRetryable;
+    use angzarr_embedded::OnRetryable;
     use std::time::Duration;
     let dir = scratch("retry");
     let path = dir.join("angzarr.toml");
@@ -322,7 +322,7 @@ async fn a_store_that_cannot_open_fails_the_run() {
 /// A handler registering nothing useful: only its name is asked for.
 struct NoHandler;
 
-impl angzarr_embedded::next::angzarr_router::router::CommandHandler for NoHandler {
+impl angzarr_embedded::angzarr_router::router::CommandHandler for NoHandler {
     fn name(&self) -> &str {
         "none"
     }
@@ -333,10 +333,10 @@ impl angzarr_embedded::next::angzarr_router::router::CommandHandler for NoHandle
 
     async fn dispatch(
         &self,
-        _: &angzarr_embedded::next::v1::ContextualCommand,
+        _: &angzarr_embedded::v1::ContextualCommand,
     ) -> Result<
         angzarr_router::pb::CommandHandlerResponse,
-        angzarr_embedded::next::angzarr_router::error::CodedError,
+        angzarr_embedded::angzarr_router::error::CodedError,
     > {
         unreachable!("never registered")
     }
@@ -356,14 +356,14 @@ mod fixtures {
     use std::sync::{Condvar, Mutex};
     use std::time::Duration;
 
-    use angzarr_embedded::next::angzarr_router::error::CodedError;
-    use angzarr_embedded::next::angzarr_router::router::CommandHandler;
-    use angzarr_embedded::next::v1::{
+    use angzarr_embedded::angzarr_router::error::CodedError;
+    use angzarr_embedded::angzarr_router::router::CommandHandler;
+    use angzarr_embedded::v1::{
         command_page, Command, CommandBook, CommandPage, ComponentDescriptor, ComponentKind,
         ConflictResolution, ContextualCommand, Cover, EventBook, EventPage, StateDescriptor,
         StateOptions, Uuid,
     };
-    use angzarr_embedded::next::Any;
+    use angzarr_embedded::Any;
     use angzarr_router::pb::CommandHandlerResponse;
 
     /// How long a dispatch waits for what a test is forcing: past it, the
@@ -499,7 +499,7 @@ mod fixtures {
 /// The App's async API, shared (red, design-by-test, 2026-10-30): commands
 /// for different streams run at once, forced by handlers that can only
 /// finish together. One stream's commands race optimistically, as the
-/// kernel's tests show (`next/concurrency.test.rs` in angzarr-embedded).
+/// kernel's tests show (`src/concurrency.test.rs` in angzarr-embedded).
 mod concurrency {
     use std::sync::Arc;
 
@@ -615,8 +615,8 @@ mod concurrency {
 /// only to an arrival its `[[component]]`'s `expose` admits; the answer is
 /// `CommandHandlerCoordinatorService.Handle`'s.
 mod exposure {
-    use angzarr_embedded::next::v1::DeliveryOutcome;
-    use angzarr_embedded::next::{KernelError, Malformed};
+    use angzarr_embedded::v1::DeliveryOutcome;
+    use angzarr_embedded::{KernelError, Malformed};
 
     use super::fixtures::*;
     use super::*;
@@ -763,11 +763,9 @@ mod exposure {
 /// process manager is refused at run, and a decision with no events is
 /// answered with the addressed stream, empty.
 mod exposure_edges {
-    use angzarr_embedded::next::angzarr_router::error::CodedError;
-    use angzarr_embedded::next::angzarr_router::router::CommandHandler;
-    use angzarr_embedded::next::v1::{
-        ComponentKind, ContextualCommand, DeliveryOutcome, EventBook,
-    };
+    use angzarr_embedded::angzarr_router::error::CodedError;
+    use angzarr_embedded::angzarr_router::router::CommandHandler;
+    use angzarr_embedded::v1::{ComponentKind, ContextualCommand, DeliveryOutcome, EventBook};
     use angzarr_router::pb::CommandHandlerResponse;
 
     use super::fixtures::*;
@@ -942,10 +940,10 @@ mod exposure_edges {
 /// listed one nobody registered is refused, and so is one registered and
 /// listed nowhere; the children started are stopped.
 mod listing {
-    use angzarr_embedded::next::angzarr_router::error::CodedError;
-    use angzarr_embedded::next::angzarr_router::policy::PolicyDispatch;
-    use angzarr_embedded::next::angzarr_router::router::ProjectorHandler;
-    use angzarr_embedded::next::v1::{EventBook, Projection};
+    use angzarr_embedded::angzarr_router::error::CodedError;
+    use angzarr_embedded::angzarr_router::policy::PolicyDispatch;
+    use angzarr_embedded::angzarr_router::router::ProjectorHandler;
+    use angzarr_embedded::v1::{EventBook, Projection};
 
     use super::fixtures::*;
     use super::*;
@@ -1218,9 +1216,9 @@ mod listing {
 /// registry has no policy); the next starts with the policy registered and,
 /// before any command, has run the step `left`'s event owes into `right`.
 mod resume {
-    use angzarr_embedded::next::angzarr_router::policy::PolicyDispatch;
-    use angzarr_embedded::next::v1::{command_page, Command, CommandBook, CommandPage};
-    use angzarr_embedded::next::{EventStore, MemoryDeadLetters, StreamRef};
+    use angzarr_embedded::angzarr_router::policy::PolicyDispatch;
+    use angzarr_embedded::v1::{command_page, Command, CommandBook, CommandPage};
+    use angzarr_embedded::{EventStore, MemoryDeadLetters, StreamRef};
 
     use super::fixtures::*;
     use super::*;
@@ -1258,7 +1256,7 @@ mod resume {
             MET.trim_start_matches('/'),
             |_, source| {
                 Ok(vec![CommandBook {
-                    cover: Some(angzarr_embedded::next::v1::Cover {
+                    cover: Some(angzarr_embedded::v1::Cover {
                         domain: "right".to_string(),
                         root: source.and_then(|c| c.root.clone()),
                         edition: None,

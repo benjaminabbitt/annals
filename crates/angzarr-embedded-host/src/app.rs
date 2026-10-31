@@ -29,8 +29,8 @@ use std::future::Future;
 use std::path::Path;
 
 use angzarr_diagnostic::Report;
-use angzarr_embedded::next::v1::{CommandBook, Cover, EventBook, EventPage};
-use angzarr_embedded::next::{
+use angzarr_embedded::v1::{CommandBook, Cover, EventBook, EventPage};
+use angzarr_embedded::{
     EventStore, Failure, Handled, Kernel, KernelError, Malformed, MemoryDeadLetters, OnPolicyBug,
     OnRetryable, Registry, Rejected, Sampled, StoreError, StreamRef, Target,
 };
@@ -151,11 +151,11 @@ fn started_at() -> Sampled {
     id[6] = 0x70;
     id[8] = 0x80;
     Sampled {
-        now: angzarr_embedded::next::Timestamp {
+        now: angzarr_embedded::Timestamp {
             seconds: since.as_secs() as i64,
             nanos: since.subsec_nanos() as i32,
         },
-        command_id: angzarr_embedded::next::v1::Uuid::from_bytes(id),
+        command_id: angzarr_embedded::v1::Uuid::from_bytes(id),
     }
 }
 

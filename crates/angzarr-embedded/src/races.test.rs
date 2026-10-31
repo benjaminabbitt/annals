@@ -30,15 +30,15 @@ use angzarr_router::pb::{CommandHandlerResponse, ConflictReport};
 use angzarr_router::policy::PolicyDispatch;
 use angzarr_router::router::CommandHandler;
 
-use crate::next::reasons::CoordinatorReason;
-use crate::next::toys::prelude::*;
-use crate::next::toys::{at, command, cover, fact, Edit};
-use crate::next::v1::{
+use crate::reasons::CoordinatorReason;
+use crate::toys::prelude::*;
+use crate::toys::{at, command, cover, fact, Edit};
+use crate::v1::{
     command_page, Command, CommandBook, CommandPage, ComponentDescriptor, ComponentKind,
     ConflictResolution, ContextualCommand, Cover, DeliveryOutcome, EventBook, EventPage,
     StateDescriptor, StateOptions,
 };
-use crate::next::{
+use crate::{
     class, Any, Class, Failure, Handled, Kernel, KernelError, MemoryDeadLetters, OnRetryable,
     Recovery, Registry, Rejected, StepError, Wait,
 };
@@ -387,11 +387,11 @@ fn assert_cap_exhausted(failure: &Failure<Rejected>, attempts: u32, cap: u32) {
 /// its one detail `processing_failed`, `retry_count` the retries (the
 /// attempts after the first), transient (decision 14.48).
 fn assert_dead_lettered_at_cap(log: &MemoryDeadLetters, attempts: u32, cap: u32) {
-    use crate::next::toys::{assert_letter, one_letter, processing_failed, wire};
+    use crate::toys::{assert_letter, one_letter, processing_failed, wire};
     let lines = log.lines();
     assert_eq!(lines.len(), 1, "{lines:?}");
     let line = &lines[0];
-    assert!(line.starts_with(crate::next::DEAD_LETTER_PREFIX), "{line}");
+    assert!(line.starts_with(crate::DEAD_LETTER_PREFIX), "{line}");
     let reason = wire(
         "COORDINATOR_REASON_RETRY_CAP_EXHAUSTED",
         &[
@@ -404,14 +404,14 @@ fn assert_dead_lettered_at_cap(log: &MemoryDeadLetters, attempts: u32, cap: u32)
     // (ProcessingFailedDetails.retry_count), not the attempts.
     assert_letter(
         &letter,
-        crate::next::v1::ComponentKind::Aggregate,
+        crate::v1::ComponentKind::Aggregate,
         &reason,
         processing_failed(&reason, attempts - 1, true),
     );
     assert!(
         matches!(
             letter.payload,
-            Some(crate::next::v1::angzarr_dead_letter::Payload::RejectedCommand(_))
+            Some(crate::v1::angzarr_dead_letter::Payload::RejectedCommand(_))
         ),
         "{letter:?}"
     );
@@ -792,7 +792,7 @@ fn with_no_race_reruns_a_lost_race_goes_back_as_the_stores_conflict() {
         assert!(
             matches!(
                 failure,
-                Failure::Kernel(KernelError::Store(crate::next::StoreError::Conflict { .. }))
+                Failure::Kernel(KernelError::Store(crate::StoreError::Conflict { .. }))
             ),
             "max_retries {max_retries}: {failure:?}"
         );
@@ -941,7 +941,7 @@ fn with_no_race_reruns_a_fact_that_loses_the_race_goes_back_as_the_stores_confli
     assert!(
         matches!(
             failure,
-            Failure::Kernel(KernelError::Store(crate::next::StoreError::Conflict { .. }))
+            Failure::Kernel(KernelError::Store(crate::StoreError::Conflict { .. }))
         ),
         "{failure:?}"
     );
@@ -1113,9 +1113,7 @@ fn with_no_race_reruns_a_policy_step_that_loses_the_race_goes_back_as_the_stores
         matches!(
             &failure,
             Failure::Downstream {
-                error: StepError::Kernel(KernelError::Store(
-                    crate::next::StoreError::Conflict { .. }
-                )),
+                error: StepError::Kernel(KernelError::Store(crate::StoreError::Conflict { .. })),
                 ..
             }
         ),
