@@ -30,13 +30,23 @@ angzarr-ports = { git = "https://github.com/angzarr-io/angzarr", rev = "d704afc2
 # upcasting, snapshots, a policy's output checks, the store writes,
 # positions and resume.
 angzarr-router = { git = "https://github.com/angzarr-io/angzarr-router", rev = "0af194357d2e60cc56836d21464ce7deed16704b" }
+# angzarr's shared SQLite store, re-exported (`angzarr_embedded::angzarr_store_sqlite`)
+# so an application pins it through angzarr-embedded, at the rev the kernel
+# is built with. Behind the `sqlite` feature, off by default: it brings
+# sqlx and SQLite, which an application on another store, and the wasm
+# build, have no use for.
+angzarr-store-sqlite = { path = "../angzarr-store-sqlite", optional = true }
+
+[features]
+# Re-export angzarr-store-sqlite.
+sqlite = ["dep:angzarr-store-sqlite"]
 
 # The kernel's tests run on angzarr-ports' MemoryStore and, on a tokio
 # runtime, on the shared SQLite adapter (sqlite.test.rs); and a decorated
 # aggregate (`src/decorated.test.rs`) through angzarr-embedded-macros, whose expansion
-# names `::angzarr-embedded`.
+# names `::angzarr-embedded`; with `sqlite` on, so the re-export is tested.
 [dev-dependencies]
-angzarr-embedded = { path = "." }
+angzarr-embedded = { path = ".", features = ["sqlite"] }
 angzarr-ports = { git = "https://github.com/angzarr-io/angzarr", rev = "d704afc21812225e7c536ef4055bf48a3ef821e9", features = ["memory"] }
 angzarr-embedded-macros = { path = "../angzarr-embedded-macros" }
 angzarr-store-sqlite = { path = "../angzarr-store-sqlite" }

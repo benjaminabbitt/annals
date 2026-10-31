@@ -127,6 +127,11 @@ mod sqlite;
 #[path = "next.test.rs"]
 mod next_alias;
 
+// The crates re-exported at the root, as a dependent names them.
+#[cfg(test)]
+#[path = "reexports.test.rs"]
+mod reexports;
+
 // A store recording each write, and failing what a test says.
 #[cfg(test)]
 #[path = "recording.test.rs"]
@@ -141,8 +146,17 @@ pub use angzarr_diagnostic;
 /// this crate forwards under their own codes ([`KernelError::Store`]), is
 /// `angzarr_ports::EN_US`.
 pub use angzarr_ports;
+/// angzarr-proto, angzarr's wire types (`io.angzarr.v1`, whose messages
+/// are also [`v1`], and [`ids`]), re-exported so an application names the
+/// copy the kernel is built on without pinning it itself.
+pub use angzarr_proto;
 /// angzarr's shared client router, which the kernel dispatches through.
 pub use angzarr_router;
+/// angzarr-store-sqlite, the shared SQLite store, re-exported so an
+/// application pins it through angzarr-embedded. Behind the `sqlite`
+/// feature, off by default: it brings sqlx and SQLite.
+#[cfg(feature = "sqlite")]
+pub use angzarr_store_sqlite;
 pub use check::{check, Body, Checked, Identified, Malformed, Sampled};
 pub use conflict::{Key, UnitPath, Units};
 pub use dead_letter::{dead_letter_line, DeadLetterLog, MemoryDeadLetters, DEAD_LETTER_PREFIX};
