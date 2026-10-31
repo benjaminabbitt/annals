@@ -60,12 +60,11 @@
 //! - **Versioned.** The file is stamped `schema_version` ([`KEY`]), an
 //!   unsigned integer that only increases; this build reads version
 //!   [`CURRENT`]. A newer file is refused (`angzarr-yaml-too-new`), never
-//!   half-read. A file with no stamp is version 0, and version 1 is the
-//!   first, so it is refused as older than the oldest this build reads
-//!   (`angzarr-yaml-too-old`, `oldest=1`): the files written before the
-//!   stamp were TOML, rewritten by hand. A later version adds a step from
-//!   the one before it to [`loader`], and a fixture of the old version to
-//!   [`FIXTURES`].
+//!   half-read. A file with no stamp (an empty or comment-only file
+//!   among them) is the oldest generation, and the host config has none
+//!   older than its first versioned shape, version 1: it loads as that
+//!   version. A later version adds a step from the one before it to
+//!   [`loader`], and a fixture of the old version to [`FIXTURES`].
 //! - **Strict.** Every mapping refuses a key it does not know, a missing
 //!   required key (a component's `name`, `language` or `kind`) is refused,
 //!   and so is a value outside a closed set (`kind`, `expose`,
@@ -107,8 +106,18 @@ pub const CURRENT: u32 = 1;
 /// [`CURRENT`], with a step from every older version it still reads.
 pub fn loader() -> Loader {
     Migrations::new(KIND, CURRENT)
+        .step(0, unstamped)
         .build()
         .expect("the host config's migration chain is whole")
+}
+
+/// The step from a file with no stamp (version 0) to version 1: none but
+/// the stamp, which the loader writes. Version 1 is the host config's
+/// first versioned shape, the shape the unstamped files already had, and a
+/// format with no older generation reads an unstamped file as current
+/// (the config-versioning rule).
+fn unstamped(_: &mut angzarr_yaml::Value) -> Result<(), angzarr_yaml::versioned::MigrationError> {
+    Ok(())
 }
 
 /// A config at every version the [`loader`] reads, and what each must

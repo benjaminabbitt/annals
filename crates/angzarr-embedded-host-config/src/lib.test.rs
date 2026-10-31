@@ -79,9 +79,12 @@ fn the_file_is_angzarr_yaml_stamped_schema_version_at_version_1() {
 #[test]
 fn the_fixtures_load() {
     loader().assert_fixtures(FIXTURES);
-    assert!(FIXTURES
+    let unstamped: Vec<_> = FIXTURES
         .iter()
-        .all(|f| f.input.contains("schema_version: 1")));
+        .filter(|f| !f.input.contains("schema_version"))
+        .map(|f| f.name)
+        .collect();
+    assert_eq!(unstamped, ["fixtures/v0-unstamped.yaml"]);
 }
 
 /// A current file loads, every key read as its comment says.
