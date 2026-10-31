@@ -9,6 +9,11 @@ as `angzarr_embedded::angzarr_diagnostic`) and angzarr's wire
 types (angzarr-proto, with prost and prost-types), which the kernel,
 `angzarr_embedded`, operates on directly; angzarr-proto is a git dependency
 whose build runs `protoc`.
+Each is re-exported at the root (`angzarr_embedded::angzarr_proto`,
+`angzarr_ports`, `angzarr_diagnostic`, `angzarr_router`), and the shared
+SQLite store too (`angzarr_embedded::angzarr_store_sqlite`) with the
+`sqlite` feature, off by default, so an application pins angzarr-embedded
+alone.
 
 ## The model
 

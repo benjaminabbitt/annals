@@ -76,6 +76,12 @@ is a LEAF: it depends on nothing of angzarr-embedded (its own test,
 `a_store_depends_on_nothing_of_angzarr_embedded`, holds it to that), and its errors
 are `Diagnostic`s through angzarr-ports' re-export of angzarr-diagnostic. It lives here
 for the POC, beside its first user; it can move to angzarr-project unchanged.
+angzarr-embedded depends on it the other way only optionally, behind its
+`sqlite` feature (off by default, so no application, and not the wasm build,
+gets SQLite unasked), to re-export it as
+`angzarr_embedded::angzarr_store_sqlite`; it re-exports angzarr-proto,
+angzarr-ports, angzarr-diagnostic and angzarr-router at its root too, so an
+application pins angzarr-embedded alone.
 
 angzarr-embedded-host depends on `angzarr-embedded` (the kernel's `Registry`,
 which `Host::register` fills), `angzarr-router` and `angzarr-proto`
